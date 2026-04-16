@@ -46,10 +46,10 @@ export function StatusBadge({
   status,
   className,
 }: {
-  status: WorkflowStatus;
+  status: string;
   className?: string;
 }) {
-  const config = statusConfig[status] ?? statusConfig.pending;
+  const config = statusConfig[status as WorkflowStatus] ?? statusConfig.pending;
   return (
     <span
       className={cn(
@@ -88,10 +88,10 @@ export function RuntimeBadge({
   runtime,
   className,
 }: {
-  runtime: Runtime;
+  runtime: string;
   className?: string;
 }) {
-  const config = runtimeConfig[runtime] ?? runtimeConfig.make;
+  const config = runtimeConfig[runtime?.toLowerCase() as Runtime] ?? runtimeConfig.make;
   return (
     <span
       className={cn(

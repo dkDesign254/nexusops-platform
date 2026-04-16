@@ -2,16 +2,16 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { SectionHeader } from "@/components/AgentOpsUI";
 import { trpc } from "@/lib/trpc";
 import {
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Clock,
   FileText,
   Loader2,
 } from "lucide-react";
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Streamdown } from "streamdown";
 
-function formatDate(date: Date | string | null | undefined): string {
+function formatDate(date: string | null | undefined): string {
   if (!date) return "—";
   return new Date(date).toLocaleString(undefined, {
     month: "long",
@@ -22,17 +22,20 @@ function formatDate(date: Date | string | null | undefined): string {
   });
 }
 
-function ReportCard({ report }: { report: {
-  id: number;
-  workflowId: string;
-  summary: string;
-  insights: string;
-  risks: string;
+type AirtableReport = {
+  recordId: string;
+  reportId: string;
+  workflowRecordIds: string[];
+  executiveSummary: string;
+  keyInsights: string;
+  risksOrAnomalies: string;
   recommendation: string;
-  createdAt: Date;
-}}) {
+  approved: boolean;
+  reportTimestamp: string | null;
+};
+
+function ReportCard({ report }: { report: AirtableReport }) {
   const [expanded, setExpanded] = useState(false);
-  const [, setLocation] = useLocation();
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -46,21 +49,18 @@ function ReportCard({ report }: { report: {
             <FileText className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">
-              Weekly Marketing Performance Report
-            </p>
-            <div className="flex items-center gap-3 mt-0.5">
-              <code
-                className="text-xs font-mono text-primary/70 hover:text-primary cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLocation(`/workflows/${report.workflowId}`);
-                }}
-              >
-                {report.workflowId}
-              </code>
-              <span className="text-xs text-muted-foreground">
-                {formatDate(report.createdAt)}
+            <div className="flex items-center gap-2">
+              <code className="text-xs font-mono text-primary">{report.reportId}</code>
+              {report.approved && (
+                <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+                  <CheckCircle2 className="w-3 h-3" /> Approved
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(report.reportTimestamp)}
               </span>
             </div>
           </div>
@@ -75,55 +75,44 @@ function ReportCard({ report }: { report: {
       {/* Expanded content */}
       {expanded && (
         <div className="border-t border-border">
-          {/* Summary preview */}
+          {/* Executive Summary */}
           <div className="px-5 py-4 border-b border-border bg-blue-500/5">
-            <p className="text-xs font-medium text-blue-400 uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-2">
               Executive Summary
             </p>
-            <div className="text-sm text-foreground/80 leading-relaxed">
-              <Streamdown>{report.summary}</Streamdown>
-            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+              {report.executiveSummary || "—"}
+            </p>
           </div>
 
           {/* Grid: insights + risks */}
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
             <div className="px-5 py-4 bg-emerald-500/5">
-              <p className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2">
+              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest mb-2">
                 Key Insights
               </p>
-              <div className="text-sm text-foreground/80 leading-relaxed">
-                <Streamdown>{report.insights}</Streamdown>
-              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                {report.keyInsights || "—"}
+              </p>
             </div>
             <div className="px-5 py-4 bg-red-500/5">
-              <p className="text-xs font-medium text-red-400 uppercase tracking-wider mb-2">
-                Identified Risks
+              <p className="text-xs font-semibold text-red-400 uppercase tracking-widest mb-2">
+                Risks or Anomalies
               </p>
-              <div className="text-sm text-foreground/80 leading-relaxed">
-                <Streamdown>{report.risks}</Streamdown>
-              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                {report.risksOrAnomalies || "—"}
+              </p>
             </div>
           </div>
 
-          {/* Recommendations */}
+          {/* Recommendation */}
           <div className="px-5 py-4 border-t border-border bg-amber-500/5">
-            <p className="text-xs font-medium text-amber-400 uppercase tracking-wider mb-2">
-              Recommendations
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-2">
+              Recommendation
             </p>
-            <div className="text-sm text-foreground/80 leading-relaxed">
-              <Streamdown>{report.recommendation}</Streamdown>
-            </div>
-          </div>
-
-          {/* Footer action */}
-          <div className="px-5 py-3 border-t border-border flex justify-end">
-            <button
-              onClick={() => setLocation(`/workflows/${report.workflowId}`)}
-              className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-            >
-              View full audit trail
-              <ChevronRight className="w-3 h-3" />
-            </button>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+              {report.recommendation || "—"}
+            </p>
           </div>
         </div>
       )}
@@ -132,7 +121,7 @@ function ReportCard({ report }: { report: {
 }
 
 export default function ReportsPage() {
-  const { data: reports, isLoading } = trpc.logs.allReports.useQuery();
+  const { data: reports, isLoading } = trpc.airtable.finalReports.useQuery({});
 
   return (
     <DashboardLayout>
@@ -142,7 +131,7 @@ export default function ReportsPage() {
             Reports
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            AI-generated Weekly Marketing Performance Reports — structured with summary, insights, risks, and recommendations
+            AI-generated Weekly Marketing Performance Reports from Airtable — structured with summary, insights, risks, and recommendations
           </p>
         </div>
 
@@ -163,14 +152,14 @@ export default function ReportsPage() {
             <div>
               <p className="text-sm font-medium text-foreground">No reports yet</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Execute a workflow to generate your first AI-powered marketing report.
+                Reports will appear here once workflows complete and generate AI analysis.
               </p>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             {reports.map((report) => (
-              <ReportCard key={report.id} report={report} />
+              <ReportCard key={report.recordId} report={report} />
             ))}
           </div>
         )}

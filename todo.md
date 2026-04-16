@@ -42,3 +42,16 @@
 - [x] Vitest tests for webhook handlers
 - [x] Final UI polish and responsive design
 - [x] Checkpoint and delivery
+
+## Airtable Integration
+- [x] Store AIRTABLE_API_KEY and AIRTABLE_BASE_ID as secrets
+- [x] Build server/airtable.ts client with typed fetchers for all 5 tables
+- [x] Build server/routers/airtable.ts tRPC router exposing all 5 tables
+- [x] Register airtable router in server/routers.ts
+- [x] Update Dashboard page to show Airtable workflow data + stats
+- [x] Update WorkflowDetail page to show Airtable execution + AI + report data
+- [x] Update ReportsPage to show Airtable Final Report data
+- [x] Add PerformanceData page with metrics table and KPI summary cards
+- [x] Add Performance Data nav item to sidebar
+- [x] Write Vitest tests for Airtable router
+- [x] Checkpoint and deliver

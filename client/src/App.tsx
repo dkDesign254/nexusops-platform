@@ -9,6 +9,7 @@ import WorkflowNew from "./pages/WorkflowNew";
 import WorkflowDetail from "./pages/WorkflowDetail";
 import ReportsPage from "./pages/ReportsPage";
 import WebhookSimulator from "./pages/WebhookSimulator";
+import PerformanceData from "./pages/PerformanceData";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/workflows/:id" component={WorkflowDetail} />
       <Route path="/reports" component={ReportsPage} />
       <Route path="/webhooks" component={WebhookSimulator} />
+      <Route path="/performance" component={PerformanceData} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -29,6 +29,7 @@ import {
   LogOut,
   PanelLeft,
   Plus,
+  TrendingUp,
   Webhook,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -39,6 +40,7 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Plus, label: "New Workflow", path: "/workflows/new" },
+  { icon: TrendingUp, label: "Performance Data", path: "/performance" },
   { icon: FileText, label: "Reports", path: "/reports" },
   { icon: Webhook, label: "Webhook Simulator", path: "/webhooks" },
 ];
