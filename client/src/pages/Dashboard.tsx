@@ -39,7 +39,7 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -626,29 +626,59 @@ function WorkflowTable() {
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const { data: stats, isLoading: statsLoading } = trpc.airtable.dashboardStats.useQuery(undefined, {
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [relativeTime, setRelativeTime] = useState("");
+
+  const { data: stats, isLoading: statsLoading, dataUpdatedAt } = trpc.airtable.dashboardStats.useQuery(undefined, {
     refetchInterval: 60000,
   });
+
+  useEffect(() => {
+    if (dataUpdatedAt) setLastSync(new Date(dataUpdatedAt));
+  }, [dataUpdatedAt]);
+
+  useEffect(() => {
+    function update() {
+      if (!lastSync) { setRelativeTime(""); return; }
+      const secs = Math.floor((Date.now() - lastSync.getTime()) / 1000);
+      if (secs < 10) setRelativeTime("just now");
+      else if (secs < 60) setRelativeTime(`${secs}s ago`);
+      else if (secs < 3600) setRelativeTime(`${Math.floor(secs / 60)}m ago`);
+      else setRelativeTime(lastSync.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }));
+    }
+    update();
+    const id = setInterval(update, 30000);
+    return () => clearInterval(id);
+  }, [lastSync]);
 
   const refresh = () => {
     utils.airtable.dashboardStats.invalidate();
     utils.airtable.workflows.invalidate();
+    setLastSync(new Date());
   };
 
   return (
     <DashboardLayout breadcrumbs={[{ label: "Dashboard" }]}>
       <div className="max-w-[1400px] mx-auto space-y-6">
         {/* Page header */}
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-foreground tracking-tight">
               Governance Dashboard
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Runtime-independent supervision · Weekly Marketing Performance Reporting
-            </p>
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+              <p className="text-xs text-muted-foreground">
+                Runtime-independent supervision · Weekly Marketing Performance Reporting
+              </p>
+              {relativeTime && (
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Synced {relativeTime}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button variant="outline" size="sm" onClick={refresh} className="h-8 text-xs gap-1.5 bg-transparent">
               <RefreshCw className="w-3 h-3" />
               Refresh
@@ -658,6 +688,56 @@ export default function Dashboard() {
               New Workflow
             </Button>
           </div>
+        </div>
+
+        {/* Quick Actions bar */}
+        <div className="flex items-center gap-2 flex-wrap pb-1 border-b border-border/40">
+          <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mr-1">Quick Actions</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5 bg-transparent border-border/60 hover:border-primary/50"
+            onClick={() => setLocation("/workflows/new")}
+          >
+            <Plus className="w-3 h-3 text-primary" />
+            New Workflow
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5 bg-transparent border-border/60 hover:border-primary/50"
+            onClick={() => setLocation("/logs")}
+          >
+            <Activity className="w-3 h-3 text-blue-400" />
+            Execution Logs
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5 bg-transparent border-border/60 hover:border-primary/50"
+            onClick={() => setLocation("/ai-logs")}
+          >
+            <Bot className="w-3 h-3 text-purple-400" />
+            AI Logs
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5 bg-transparent border-border/60 hover:border-primary/50"
+            onClick={() => setLocation("/reports")}
+          >
+            <TrendingUp className="w-3 h-3 text-emerald-400" />
+            Reports
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5 bg-transparent border-border/60 hover:border-primary/50"
+            onClick={() => setLocation("/performance")}
+          >
+            <Sparkles className="w-3 h-3 text-amber-400" />
+            Performance Data
+          </Button>
         </div>
 
         {/* Stats grid */}

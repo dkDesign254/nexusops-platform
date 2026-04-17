@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Bot,
   CheckCircle2,
+  Key,
   Loader2,
   Webhook,
   Zap,
@@ -31,6 +32,7 @@ export default function WorkflowNew() {
   const [runtime, setRuntime] = useState<"make" | "n8n">("make");
   const [requestedBy, setRequestedBy] = useState(user?.name ?? "");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [makeApiKey, setMakeApiKey] = useState("");
   const [result, setResult] = useState<{ id: string; status: string } | null>(null);
 
   const createMutation = trpc.workflows.create.useMutation({
@@ -53,6 +55,7 @@ export default function WorkflowNew() {
       runtime,
       requestedBy: requestedBy.trim(),
       webhookUrl: webhookUrl.trim() || undefined,
+      makeApiKey: runtime === "make" && makeApiKey.trim() ? makeApiKey.trim() : undefined,
     });
   };
 
@@ -229,6 +232,35 @@ export default function WorkflowNew() {
                 Leave blank to run in simulation mode.
               </p>
             </div>
+
+            {/* Make API Key — shown only for Make runtime */}
+            {runtime === "make" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="makeApiKey" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Make API Key{" "}
+                  <span className="text-muted-foreground/60 normal-case tracking-normal font-normal">
+                    (optional)
+                  </span>
+                </Label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    id="makeApiKey"
+                    type="password"
+                    placeholder="Enter your Make API key"
+                    value={makeApiKey}
+                    onChange={(e) => setMakeApiKey(e.target.value)}
+                    className="bg-input border-border text-sm pl-9"
+                    autoComplete="off"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Sent as the <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">x-make-apikey</code> header on the outbound webhook request.
+                  Find your API key in Make under <span className="font-medium">Profile → API</span>.
+                  If set as a platform secret (<code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">MAKE_API_KEY</code>), you can leave this blank.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* What happens next */}

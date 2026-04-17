@@ -15,6 +15,7 @@ import { trpc } from "@/lib/trpc";
 import {
   CheckCircle2,
   ChevronDown,
+  Key,
   Loader2,
   Send,
   Terminal,
@@ -42,6 +43,7 @@ export default function WebhookSimulator() {
   const [eventType, setEventType] = useState("execution");
   const [status, setStatus] = useState<"success" | "failure">("success");
   const [message, setMessage] = useState("Step completed successfully by external runtime.");
+  const [makeApiKey, setMakeApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SimResult[]>([]);
 
@@ -62,9 +64,14 @@ export default function WebhookSimulator() {
     };
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (runtime === "make" && makeApiKey.trim()) {
+        headers["x-make-apikey"] = makeApiKey.trim();
+      }
+
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
       });
       const body = await res.json();
@@ -272,6 +279,30 @@ export default function WebhookSimulator() {
                   rows={3}
                 />
               </div>
+
+              {/* Make API Key — only for Make runtime */}
+              {runtime === "make" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Make API Key{" "}
+                    <span className="text-muted-foreground/60 normal-case tracking-normal font-normal">(optional)</span>
+                  </Label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      type="password"
+                      placeholder="x-make-apikey header value"
+                      value={makeApiKey}
+                      onChange={(e) => setMakeApiKey(e.target.value)}
+                      className="bg-input border-border text-sm pl-9"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Sent as <code className="font-mono text-[11px] bg-muted px-1 py-0.5 rounded">x-make-apikey</code> header on the request.
+                  </p>
+                </div>
+              )}
 
               <Button
                 onClick={handleSend}

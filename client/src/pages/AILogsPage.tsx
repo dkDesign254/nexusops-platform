@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Bot,
@@ -18,23 +17,47 @@ import {
   Sparkles,
   DollarSign,
   Clock,
+  Copy,
+  ExternalLink,
+  AlertCircle,
 } from "lucide-react";
+import { useLocation } from "wouter";
+import { toast } from "sonner";
 
-interface AILogCardProps {
-  log: {
-    recordId: string;
-    logId: string;
-    workflowRecordIds: string[];
-    promptText: string;
-    responseText: string;
-    modelUsed: string;
-    timestamp: string | null;
-    costNotes: string | null;
-  };
+function fmtTimestamp(ts: string | null): string {
+  if (!ts || ts === "None") return "—";
+  try {
+    return new Date(ts).toLocaleString(undefined, {
+      month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch {
+    return ts;
+  }
 }
 
-function AILogCard({ log }: AILogCardProps) {
+interface AILog {
+  recordId: string;
+  logId: string;
+  workflowRecordIds: string[];
+  promptText: string;
+  responseText: string;
+  modelUsed: string;
+  timestamp: string | null;
+  costNotes: string | null;
+}
+
+function AILogCard({ log }: { log: AILog }) {
   const [expanded, setExpanded] = useState(false);
+  const [, setLocation] = useLocation();
+
+  // Display a clean log ID — if it's a raw Airtable record ID (starts with "rec"), show "—"
+  const displayId = log.logId && !log.logId.startsWith("rec") ? log.logId : "—";
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard`);
+  };
 
   return (
     <Card className="bg-card/50 border-border/60 hover:border-border transition-colors">
@@ -49,31 +72,33 @@ function AILogCard({ log }: AILogCardProps) {
               <Bot className="h-4 w-4 text-purple-400" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <code className="text-[11px] font-mono text-primary/80 bg-primary/5 px-1.5 py-0.5 rounded">
-                  {log.logId}
-                </code>
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                {displayId !== "—" && (
+                  <code className="text-[11px] font-mono text-primary/80 bg-primary/5 px-1.5 py-0.5 rounded">
+                    {displayId}
+                  </code>
+                )}
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
                   <Cpu className="h-3 w-3" />
-                  {log.modelUsed}
+                  {log.modelUsed !== "—" ? log.modelUsed : "Unknown model"}
                 </span>
                 {log.costNotes && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted/50 text-muted-foreground border border-border">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     <DollarSign className="h-3 w-3" />
                     {log.costNotes}
                   </span>
                 )}
               </div>
               <p className="text-xs text-muted-foreground truncate max-w-[500px]">
-                {log.promptText.slice(0, 120)}{log.promptText.length > 120 ? "…" : ""}
+                {log.promptText ? `${log.promptText.slice(0, 120)}${log.promptText.length > 120 ? "…" : ""}` : "No prompt text recorded"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
             {log.timestamp && (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono whitespace-nowrap">
                 <Clock className="h-3 w-3" />
-                {log.timestamp}
+                {fmtTimestamp(log.timestamp)}
               </span>
             )}
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -84,30 +109,73 @@ function AILogCard({ log }: AILogCardProps) {
 
         {/* Expanded trace */}
         {expanded && (
-          <div className="border-t border-border/60 grid grid-cols-1 md:grid-cols-2 gap-0">
-            {/* Prompt */}
-            <div className="p-5 border-r border-border/60">
-              <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
-                <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Prompt</span>
+          <div className="border-t border-border/60">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-border/60">
+              {/* Prompt */}
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                    <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Prompt sent to AI</span>
+                  </div>
+                  {log.promptText && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(log.promptText, "Prompt"); }}
+                    >
+                      <Copy className="h-3 w-3" /> Copy
+                    </Button>
+                  )}
+                </div>
+                <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-4 max-h-80 overflow-y-auto">
+                  <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono leading-relaxed">
+                    {log.promptText || "No prompt text recorded"}
+                  </pre>
+                </div>
               </div>
-              <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-4">
-                <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono leading-relaxed">
-                  {log.promptText || "—"}
-                </pre>
+              {/* Response */}
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                    <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">AI response</span>
+                  </div>
+                  {log.responseText && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(log.responseText, "Response"); }}
+                    >
+                      <Copy className="h-3 w-3" /> Copy
+                    </Button>
+                  )}
+                </div>
+                <div className="bg-purple-500/5 border border-purple-500/10 rounded-lg p-4 max-h-80 overflow-y-auto">
+                  <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono leading-relaxed">
+                    {log.responseText || "No response text recorded"}
+                  </pre>
+                </div>
               </div>
             </div>
-            {/* Response */}
-            <div className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-                <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">Response</span>
+            {/* Footer metadata */}
+            <div className="px-5 py-3 border-t border-border/40 flex items-center gap-4 flex-wrap bg-muted/10">
+              <div>
+                <span className="text-[11px] text-muted-foreground">Record ID: </span>
+                <code className="text-[11px] font-mono text-muted-foreground">{log.recordId}</code>
               </div>
-              <div className="bg-purple-500/5 border border-purple-500/10 rounded-lg p-4">
-                <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono leading-relaxed">
-                  {log.responseText || "—"}
-                </pre>
-              </div>
+              {log.workflowRecordIds[0] && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] gap-1 text-primary hover:text-primary"
+                  onClick={(e) => { e.stopPropagation(); setLocation(`/workflows/${log.workflowRecordIds[0]}`); }}
+                >
+                  <ExternalLink className="h-3 w-3" /> View workflow
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -121,9 +189,15 @@ export default function AILogsPage() {
   const [modelFilter, setModelFilter] = useState("all");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const { data: logs = [], isLoading, refetch } = trpc.airtable.aiLogs.useQuery({});
+  const { data: rawLogs = [], isLoading, refetch } = trpc.airtable.aiLogs.useQuery({});
 
-  const uniqueModels = useMemo(() => Array.from(new Set(logs.map((l) => l.modelUsed))), [logs]);
+  // Filter out empty/placeholder records — must have at least a promptText or a timestamp
+  const logs = useMemo(
+    () => rawLogs.filter((l) => l.promptText.trim() !== "" || (l.timestamp && l.timestamp !== "None")),
+    [rawLogs]
+  );
+
+  const uniqueModels = useMemo(() => Array.from(new Set(logs.map((l) => l.modelUsed))).filter((m) => m !== "—"), [logs]);
 
   const filtered = useMemo(() => {
     let result = [...logs];
@@ -148,10 +222,11 @@ export default function AILogsPage() {
 
   const stats = useMemo(() => {
     const total = logs.length;
-    const models = Array.from(new Set(logs.map((l) => l.modelUsed)));
+    const models = Array.from(new Set(logs.map((l) => l.modelUsed))).filter((m) => m !== "—").length;
     const withCost = logs.filter((l) => l.costNotes).length;
-    return { total, models: models.length, withCost };
-  }, [logs]);
+    const skipped = rawLogs.length - logs.length;
+    return { total, models, withCost, skipped };
+  }, [logs, rawLogs]);
 
   return (
     <DashboardLayout>
@@ -164,7 +239,7 @@ export default function AILogsPage() {
               <h1 className="text-xl font-semibold tracking-tight">AI Interaction Logs</h1>
             </div>
             <p className="text-sm text-muted-foreground">
-              Full audit trail of every AI prompt and response — complete traceability
+              Complete audit trail of every AI prompt and response — full traceability for governance and compliance
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2 h-8 text-xs">
@@ -174,11 +249,12 @@ export default function AILogsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Total AI Calls", value: stats.total, icon: Bot, color: "text-purple-400" },
-            { label: "Models Used", value: stats.models, icon: Cpu, color: "text-blue-400" },
+            { label: "Distinct Models", value: stats.models, icon: Cpu, color: "text-blue-400" },
             { label: "With Cost Notes", value: stats.withCost, icon: DollarSign, color: "text-amber-400" },
+            { label: "Filtered Out", value: stats.skipped, icon: AlertCircle, color: "text-muted-foreground" },
           ].map((s) => (
             <Card key={s.label} className="bg-card/50 border-border/60">
               <CardContent className="p-4 flex items-center gap-3">
@@ -208,7 +284,7 @@ export default function AILogsPage() {
                 />
               </div>
               <Select value={modelFilter} onValueChange={setModelFilter}>
-                <SelectTrigger className="h-8 w-[180px] text-xs">
+                <SelectTrigger className="h-8 w-[200px] text-xs">
                   <Cpu className="h-3 w-3 mr-1" />
                   <SelectValue placeholder="Model" />
                 </SelectTrigger>
@@ -238,7 +314,7 @@ export default function AILogsPage() {
           <div>
             <p className="text-xs font-medium text-purple-300">AI Governance Audit Trail</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Every AI interaction is logged immutably. Click any entry to expand the full prompt and response for compliance review.
+              Every AI interaction is logged immutably. Click any entry to expand the full prompt and response for compliance review. Incomplete records without prompt text are excluded from this view.
             </p>
           </div>
         </div>
@@ -248,6 +324,11 @@ export default function AILogsPage() {
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
               Showing {filtered.length} of {logs.length} interactions
+              {stats.skipped > 0 && (
+                <span className="ml-2 text-muted-foreground/60">
+                  · {stats.skipped} incomplete {stats.skipped === 1 ? "record" : "records"} hidden
+                </span>
+              )}
             </p>
           </div>
 

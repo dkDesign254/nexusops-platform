@@ -252,3 +252,57 @@ describe("Webhook payload validation", () => {
     expect(status).toBe("failure");
   });
 });
+
+// ─── Make API Key Dispatch Tests ─────────────────────────────────────────────
+
+describe("dispatchToRuntime — x-make-apikey header", () => {
+  it("includes x-make-apikey header when makeApiKey is provided in workflow create input", async () => {
+    // Arrange: capture the fetch call headers
+    const capturedHeaders: Record<string, string>[] = [];
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (_, init) => {
+      capturedHeaders.push((init?.headers ?? {}) as Record<string, string>);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await caller.workflows.create({
+      runtime: "make",
+      requestedBy: "test-user",
+      webhookUrl: "https://hook.make.com/test-webhook",
+      makeApiKey: "test-make-api-key-123",
+    });
+
+    // Find the fetch call that went to the webhook URL
+    const webhookCall = capturedHeaders.find((h) => h["x-make-apikey"]);
+    expect(webhookCall).toBeDefined();
+    expect(webhookCall?.["x-make-apikey"]).toBe("test-make-api-key-123");
+
+    fetchSpy.mockRestore();
+  });
+
+  it("does not include x-make-apikey header for n8n runtime even if makeApiKey is passed", async () => {
+    const capturedHeaders: Record<string, string>[] = [];
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (_, init) => {
+      capturedHeaders.push((init?.headers ?? {}) as Record<string, string>);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await caller.workflows.create({
+      runtime: "n8n",
+      requestedBy: "test-user",
+      webhookUrl: "https://n8n.example.com/webhook/test",
+      makeApiKey: "should-not-be-sent",
+    });
+
+    // No x-make-apikey header should appear for n8n
+    const hasKey = capturedHeaders.some((h) => h["x-make-apikey"]);
+    expect(hasKey).toBe(false);
+
+    fetchSpy.mockRestore();
+  });
+});

@@ -12,6 +12,7 @@ import {
   updateWorkflowStatus,
 } from "../db";
 import { invokeLLM } from "../_core/llm";
+import { ENV } from "../_core/env";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 // ─── Outbound Dispatch ────────────────────────────────────────────────────────
@@ -19,7 +20,8 @@ import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 async function dispatchToRuntime(
   workflowId: string,
   runtime: "make" | "n8n",
-  webhookUrl: string | null | undefined
+  webhookUrl: string | null | undefined,
+  makeApiKey?: string | null
 ): Promise<void> {
   if (!webhookUrl) {
     await createExecutionLog({
@@ -40,9 +42,16 @@ async function dispatchToRuntime(
       dispatchedAt: new Date().toISOString(),
     };
 
+    // Build headers — add x-make-apikey for Make runtime if a key is available
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (runtime === "make") {
+      const key = makeApiKey || ENV.makeApiKey;
+      if (key) headers["x-make-apikey"] = key;
+    }
+
     const response = await fetch(webhookUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(10000),
     });
@@ -207,6 +216,7 @@ export const workflowsRouter = router({
         runtime: z.enum(["make", "n8n"]),
         requestedBy: z.string().min(1).max(255),
         webhookUrl: z.string().optional(),
+        makeApiKey: z.string().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -246,7 +256,7 @@ export const workflowsRouter = router({
       });
 
       // Step 5: Dispatch to runtime
-      await dispatchToRuntime(id, input.runtime, input.webhookUrl);
+      await dispatchToRuntime(id, input.runtime, input.webhookUrl, input.makeApiKey);
 
       // Step 6: Generate AI report
       try {

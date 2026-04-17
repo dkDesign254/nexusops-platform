@@ -92,7 +92,7 @@ function ReportCard({
               <span className="text-sm font-semibold font-mono">{report.reportId}</span>
               <span className="text-xs text-muted-foreground">→</span>
               <button
-                onClick={() => setLocation(`/workflow/${report.workflowId}`)}
+                onClick={() => setLocation(`/workflows/${report.workflowRecordIds[0] ?? report.workflowId}`)}
                 className="text-xs text-primary hover:underline font-mono"
               >
                 {report.workflowId}
@@ -114,7 +114,7 @@ function ReportCard({
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={exportJSON} title="Export JSON">
             <Download className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setLocation(`/workflow/${report.workflowId}`)} title="View workflow">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setLocation(`/workflows/${report.workflowRecordIds[0] ?? report.workflowId}`)} title="View workflow">
             <ExternalLink className="w-3.5 h-3.5" />
           </Button>
           {!report.approved && (
@@ -196,8 +196,15 @@ export default function ReportsPage() {
     onError: (err) => toast.error(`Approval failed: ${err.message}`),
   });
 
+  // Filter out empty/placeholder reports — must have at least an executiveSummary
+  const validReports = useMemo(
+    () => reports.filter((r) => r.executiveSummary && r.executiveSummary.trim() !== ""),
+    [reports]
+  );
+  const skippedCount = reports.length - validReports.length;
+
   const filtered = useMemo(() => {
-    return reports.filter(r => {
+    return validReports.filter(r => {
       const matchSearch = !search ||
         r.reportId.toLowerCase().includes(search.toLowerCase()) ||
         r.workflowId.toLowerCase().includes(search.toLowerCase()) ||
@@ -208,10 +215,10 @@ export default function ReportsPage() {
         (filterApproved === "pending" && !r.approved);
       return matchSearch && matchFilter;
     });
-  }, [reports, search, filterApproved]);
+  }, [validReports, search, filterApproved]);
 
-  const approvedCount = reports.filter(r => r.approved).length;
-  const pendingCount = reports.filter(r => !r.approved).length;
+  const approvedCount = validReports.filter(r => r.approved).length;
+  const pendingCount = validReports.filter(r => !r.approved).length;
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : "—";
 
   // Performance data for charts
@@ -289,7 +296,7 @@ export default function ReportsPage() {
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Total Reports", value: reports.length, icon: <FileText className="w-4 h-4 text-primary" />, color: "text-foreground" },
+            { label: "Total Reports", value: validReports.length, icon: <FileText className="w-4 h-4 text-primary" />, color: "text-foreground" },
             { label: "Approved", value: approvedCount, icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />, color: "text-emerald-400" },
             { label: "Pending Approval", value: pendingCount, icon: <Clock className="w-4 h-4 text-amber-400" />, color: "text-amber-400" },
           ].map(stat => (
@@ -335,9 +342,14 @@ export default function ReportsPage() {
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Bot className="w-3 h-3" />
           <span>Sourced from Airtable · Last synced {lastUpdated}</span>
-          {filtered.length !== reports.length && (
+          {filtered.length !== validReports.length && (
             <span className="ml-2 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-              Showing {filtered.length} of {reports.length}
+              Showing {filtered.length} of {validReports.length}
+            </span>
+          )}
+          {skippedCount > 0 && (
+            <span className="ml-2 px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground/60">
+              · {skippedCount} incomplete {skippedCount === 1 ? "record" : "records"} hidden
             </span>
           )}
         </div>

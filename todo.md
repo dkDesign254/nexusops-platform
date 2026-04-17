@@ -119,3 +119,36 @@
 - [x] Expand abbreviations to full words: CTR → Click-Through Rate, ROAS → Return on Ad Spend, CPC → Cost per Click, Conv. Rate → Conversion Rate, LLM → AI model, KPI → key performance indicators
 - [x] Apply full-word labels in chart legends, table headers, KPI cards, and tooltip labels
 - [x] TypeScript clean, 34 tests passing, checkpoint
+
+## Enterprise Command Center Upgrade (Phase 6)
+
+### Phase 1 — Fix routes, logs, reports
+- [x] Execution Logs: all 22 rows show same Log ID (EXE-2026-001) — deduplicate display using recordId as fallback key; show unique identifier per row
+- [x] AI Logs: filter out empty/placeholder records (no promptText, no timestamp) from list view
+- [x] AI Logs: second record shows recordId as logId — show "—" for missing log IDs
+- [x] Reports: "View workflow" button links to /workflow/:id (wrong path) — fix to /workflows/:id
+- [x] Reports: empty second report (no summary, no timestamp) — hide incomplete records; show count in footer
+- [x] Execution Logs: add clickable row-expand panel showing full message text
+- [x] Execution Logs: group rows by workflow (show workflow name as section header)
+- [x] AI Logs: add full prompt/response expand panel with copy button
+- [x] AI Logs: show cost notes as visible inline badges
+
+### Phase 2 — Make API key auth
+- [x] Add MAKE_API_KEY to server/_core/env.ts
+- [x] Add makeApiKey optional field to workflows.create tRPC input schema
+- [x] Pass x-make-apikey header in dispatchToRuntime when runtime=make and key is provided
+- [x] Add makeApiKey input field to WorkflowNew form (shown only when runtime=make)
+- [x] Add x-make-apikey header field to WebhookSimulator outbound request builder
+- [x] Add helper text in WorkflowNew explaining where to find the Make API key
+
+### Phase 3 — Dashboard command center
+- [x] Dashboard: add "Last sync" timestamp with live relative time (animated green dot, updates every 30s)
+- [x] Dashboard: workflow table rows are clickable — navigate to /workflows/:recordId (already implemented, confirmed)
+- [x] Dashboard: add Quick Actions bar — New Workflow, Execution Logs, AI Logs, Reports, Performance Data
+- [x] Dashboard: anomaly panel shows specific workflow names and error messages (already implemented)
+
+### Phase 4 — Tests and checkpoint
+- [x] TypeScript clean (0 errors)
+- [x] All 34 existing tests passing
+- [x] Add 2 new tests for Make API key dispatch header (x-make-apikey present for Make, absent for n8n) — 36/36 passing
+- [ ] Checkpoint and deliver
