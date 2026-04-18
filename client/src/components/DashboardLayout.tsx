@@ -1,4 +1,4 @@
-import { useAuth } from "@/src/_core/hooks/useAuth";
+import { useAuth } from "@/_core/hooks/useAuth";
 import AuthPanel from "@/components/AuthPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,6 @@ import {
   Moon,
   PanelLeft,
   Plus,
-  RefreshCw,
   Settings,
   Shield,
   Sun,
