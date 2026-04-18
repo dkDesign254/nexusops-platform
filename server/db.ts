@@ -8,6 +8,7 @@ import {
   InsertReport,
   InsertUser,
   InsertWorkflow,
+  User,
   reports,
   users,
   workflows,
@@ -27,36 +28,35 @@ export async function getDb() {
   return _db;
 }
 
-// ─── Users ────────────────────────────────────────────────────────────────────
-
-export async function upsertUser(user: InsertUser): Promise<void> {
+export async function upsertUser(user: InsertUser): Promise<User | undefined> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) return;
+  if (!db) return undefined;
 
-  const values: InsertUser = { openId: user.openId };
-  const updateSet: Record<string, unknown> = {};
+  const existing = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
 
-  const textFields = ["name", "email", "loginMethod"] as const;
-  for (const field of textFields) {
-    const value = user[field];
-    if (value !== undefined) {
-      values[field] = value ?? null;
-      updateSet[field] = value ?? null;
-    }
-  }
-  if (user.lastSignedIn !== undefined) {
-    values.lastSignedIn = user.lastSignedIn;
-    updateSet.lastSignedIn = user.lastSignedIn;
-  }
-  if (user.role !== undefined) {
-    values.role = user.role;
-    updateSet.role = user.role;
-  }
-  if (!values.lastSignedIn) values.lastSignedIn = new Date();
-  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+  if (existing[0]) {
+    const updateSet: Partial<InsertUser> = {};
+    if (user.name !== undefined) updateSet.name = user.name ?? null;
+    if (user.email !== undefined) updateSet.email = user.email ?? null;
+    if (user.loginMethod !== undefined) updateSet.loginMethod = user.loginMethod ?? null;
+    if (user.role !== undefined) updateSet.role = user.role;
+    updateSet.lastSignedIn = user.lastSignedIn ?? new Date();
 
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    await db.update(users).set(updateSet).where(eq(users.openId, user.openId));
+  } else {
+    await db.insert(users).values({
+      openId: user.openId,
+      name: user.name ?? null,
+      email: user.email ?? null,
+      loginMethod: user.loginMethod ?? null,
+      role: user.role ?? "user",
+      lastSignedIn: user.lastSignedIn ?? new Date(),
+    });
+  }
+
+  const result = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
+  return result[0];
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -65,8 +65,6 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result[0];
 }
-
-// ─── Workflows ────────────────────────────────────────────────────────────────
 
 export async function createWorkflow(data: InsertWorkflow) {
   const db = await getDb();
@@ -100,8 +98,6 @@ export async function updateWorkflowStatus(
   await db.update(workflows).set(updateData).where(eq(workflows.id, id));
 }
 
-// ─── ExecutionLogs ────────────────────────────────────────────────────────────
-
 export async function createExecutionLog(data: InsertExecutionLog) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -133,8 +129,6 @@ export async function countFailedLogs(workflowId: string) {
   return result.length;
 }
 
-// ─── AI_Logs ──────────────────────────────────────────────────────────────────
-
 export async function createAILog(data: InsertAILog) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -150,8 +144,6 @@ export async function listAILogsByWorkflow(workflowId: string) {
     .where(eq(AI_Logs.workflowId, workflowId))
     .orderBy(AI_Logs.timestamp);
 }
-
-// ─── Reports ──────────────────────────────────────────────────────────────────
 
 export async function createReport(data: InsertReport) {
   const db = await getDb();
@@ -175,8 +167,6 @@ export async function listAllReports() {
   if (!db) return [];
   return db.select().from(reports).orderBy(desc(reports.createdAt));
 }
-
-// ─── Dashboard Stats ──────────────────────────────────────────────────────────
 
 export async function getDashboardStats() {
   const db = await getDb();
