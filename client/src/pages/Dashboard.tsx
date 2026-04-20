@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -203,7 +203,6 @@ function StatCard({
 function AccessPanel({ role }: { role: UserRole }) {
   const admin = role === "admin";
   const analyst = role === "analyst" || role === "admin";
-  const viewer = !admin && !analyst;
 
   return (
     <div className="surface-1 rounded-xl p-5">
@@ -521,6 +520,7 @@ function HealthBar({
 }
 
 const STATUS_OPTIONS = ["Pending", "Running", "Completed", "Failed"] as const;
+
 type WorkflowStatus = typeof STATUS_OPTIONS[number];
 
 function WorkflowTable({ role }: { role: UserRole }) {
