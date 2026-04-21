@@ -12,6 +12,9 @@ import {
   Target,
   TrendingUp,
   X,
+  Sparkles,
+  Activity,
+  Shield,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
@@ -26,8 +29,6 @@ import {
   YAxis,
 } from "recharts";
 
-// ─── Colour palette for campaign bars ─────────────────────────────────────────
-
 const CAMPAIGN_COLORS = [
   "hsl(221 83% 63%)",
   "hsl(245 58% 60%)",
@@ -39,8 +40,6 @@ const CAMPAIGN_COLORS = [
   "hsl(270 60% 60%)",
 ];
 
-// ─── Custom Tooltip ───────────────────────────────────────────────────────────
-
 function ChartTooltip({
   active,
   payload,
@@ -51,15 +50,21 @@ function ChartTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
+
   return (
-    <div className="bg-card border border-border rounded-lg p-3 shadow-lg text-xs max-w-[220px]">
+    <div className="surface-elevated rounded-2xl p-3 shadow-xl text-xs max-w-[240px]">
       <p className="font-semibold text-foreground mb-2 break-words">{label}</p>
       {payload.map((p) => (
         <div key={p.name} className="flex items-center gap-2 mb-1">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+          <span
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{ background: p.color }}
+          />
           <span className="text-muted-foreground">{p.name}:</span>
           <span className="font-medium text-foreground tabular-nums">
-            {p.name === "Spend (USD)" ? `$${p.value.toFixed(2)}` : p.value.toLocaleString()}
+            {p.name === "Spend (USD)"
+              ? `$${p.value.toFixed(2)}`
+              : p.value.toLocaleString()}
           </span>
         </div>
       ))}
@@ -67,36 +72,38 @@ function ChartTooltip({
   );
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
 function StatCard({
   label,
   value,
   sublabel,
   icon: Icon,
-  color,
+  colorClass,
 }: {
   label: string;
   value: string;
   sublabel?: string;
   icon: React.ElementType;
-  color: string;
+  colorClass: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 flex items-start gap-3">
-      <div className={`p-2 rounded-lg bg-opacity-10 shrink-0 ${color}`}>
-        <Icon className={`w-4 h-4 ${color}`} />
+    <div className="surface-elevated rounded-2xl p-4 flex items-start gap-3 card-hover">
+      <div className={`p-2.5 rounded-2xl border shrink-0 ${colorClass}`}>
+        <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground leading-tight">{label}</p>
-        <p className="text-base font-semibold tabular-nums text-foreground mt-0.5">{value}</p>
-        {sublabel && <p className="text-[11px] text-muted-foreground mt-0.5">{sublabel}</p>}
+        <p className="text-xl font-semibold tabular-nums text-foreground mt-1">
+          {value}
+        </p>
+        {sublabel && (
+          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+            {sublabel}
+          </p>
+        )}
       </div>
     </div>
   );
 }
-
-// ─── X-axis tick that wraps long campaign names ───────────────────────────────
 
 function CampaignTick({
   x,
@@ -108,10 +115,10 @@ function CampaignTick({
   payload?: { value: string };
 }) {
   const name = payload?.value ?? "";
-  // Split on " – " or " - " or space to wrap at ~12 chars per line
   const words = name.split(/\s+/);
   const lines: string[] = [];
   let current = "";
+
   for (const word of words) {
     if ((current + " " + word).trim().length > 12 && current) {
       lines.push(current.trim());
@@ -141,16 +148,12 @@ function CampaignTick({
   );
 }
 
-// ─── Date-range helpers ───────────────────────────────────────────────────────
-
 function parseStartDate(period: string | null | undefined): Date | null {
   if (!period) return null;
   const raw = period.split(/\s+to\s+/i)[0].trim();
   const d = new Date(raw);
   return isNaN(d.getTime()) ? null : d;
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PerformanceData() {
   const { data: perfData, isLoading } = trpc.airtable.performanceData.useQuery({});
@@ -161,8 +164,10 @@ export default function PerformanceData() {
   const filteredData = useMemo(() => {
     if (!perfData) return [];
     if (!startDate && !endDate) return perfData;
+
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate + "T23:59:59") : null;
+
     return perfData.filter((row) => {
       const d = parseStartDate(row.reportingPeriod);
       if (!d) return true;
@@ -172,7 +177,7 @@ export default function PerformanceData() {
     });
   }, [perfData, startDate, endDate]);
 
-  const hasFilter = startDate || endDate;
+  const hasFilter = Boolean(startDate || endDate);
 
   const totals = filteredData.reduce(
     (acc, row) => ({
@@ -190,11 +195,8 @@ export default function PerformanceData() {
       : "0.00";
 
   const costPerConversion =
-    totals.conversions > 0
-      ? (totals.spend / totals.conversions).toFixed(2)
-      : "0.00";
+    totals.conversions > 0 ? (totals.spend / totals.conversions).toFixed(2) : "0.00";
 
-  // Full campaign names — no truncation for chart labels
   const chartData = filteredData.map((row) => ({
     name: row.campaignName,
     Impressions: row.impressions,
@@ -204,93 +206,126 @@ export default function PerformanceData() {
   }));
 
   return (
-    <DashboardLayout>
+    <DashboardLayout
+      breadcrumbs={[{ label: "Dashboard", path: "/" }, { label: "Performance Data" }]}
+    >
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            Performance Data
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Marketing campaign metrics sourced from Airtable — tracking impressions, clicks,
-            conversions, and advertising spend across all active campaigns.
-          </p>
+        <div className="surface-elevated rounded-3xl p-6 md:p-7 overflow-hidden relative">
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.12),transparent_28%),radial-gradient(circle_at_left,rgba(16,185,129,0.06),transparent_22%)]" />
+          <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[11px] font-medium text-primary">
+                <Sparkles className="w-3 h-3" />
+                Performance Intelligence Layer
+              </div>
+
+              <div>
+                <h1 className="text-heading text-2xl md:text-3xl">Performance Data</h1>
+                <p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
+                  Marketing campaign metrics sourced from Airtable, tracking impressions,
+                  clicks, conversions, and advertising spend across active campaigns with
+                  derived efficiency indicators.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
+                <Activity className="w-3.5 h-3.5" />
+                <span>Live metrics layer for campaign governance</span>
+                {hasFilter && (
+                  <>
+                    <span className="opacity-40">•</span>
+                    <span>Filtered period applied</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Date-range filter */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-xl border border-border bg-card/50">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground shrink-0">
-            <CalendarRange className="w-4 h-4 text-primary" />
-            Filter by Reporting Period
-          </div>
-          <div className="flex flex-wrap items-center gap-2 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">From</span>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-8 text-xs w-36 bg-muted/30 border-border/60"
-              />
+        <div className="surface-elevated rounded-2xl p-4 md:p-5">
+          <div className="flex flex-col xl:flex-row items-start xl:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground shrink-0">
+              <CalendarRange className="w-4 h-4 text-primary" />
+              Filter by Reporting Period
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">To</span>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-8 text-xs w-36 bg-muted/30 border-border/60"
-              />
+
+            <div className="flex flex-wrap items-center gap-2 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">From</span>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-9 text-xs w-40 bg-muted/30 border-border/60 rounded-xl"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">To</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="h-9 text-xs w-40 bg-muted/30 border-border/60 rounded-xl"
+                />
+              </div>
+
+              {hasFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 text-xs gap-1 text-muted-foreground hover:text-foreground rounded-xl"
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                  Clear filter
+                </Button>
+              )}
             </div>
+
             {hasFilter && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setStartDate("");
-                  setEndDate("");
-                }}
-              >
-                <X className="w-3 h-3" />
-                Clear filter
-              </Button>
+              <span className="text-xs text-primary font-medium shrink-0">
+                {filteredData.length} of {perfData?.length ?? 0} campaigns shown
+              </span>
             )}
           </div>
-          {hasFilter && (
-            <span className="text-xs text-primary font-medium shrink-0">
-              {filteredData.length} of {perfData?.length ?? 0} campaigns shown
-            </span>
-          )}
         </div>
 
-        {/* Summary Cards */}
         {filteredData.length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-foreground mb-3">
-              Summary{hasFilter ? " (filtered period)" : " — All Campaigns"}
-            </h2>
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-foreground">
+                Summary{hasFilter ? " (filtered period)" : " — All Campaigns"}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Aggregated commercial and engagement indicators across the selected campaigns.
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
               <StatCard
                 label="Total Impressions"
                 value={totals.impressions.toLocaleString()}
-                sublabel="Ad views across all campaigns"
+                sublabel="Ad views across campaigns"
                 icon={Eye}
-                color="text-blue-400"
+                colorClass="text-blue-400 bg-blue-500/10 border-blue-500/20"
               />
               <StatCard
                 label="Total Clicks"
                 value={totals.clicks.toLocaleString()}
-                sublabel="Users who clicked an ad"
+                sublabel="Users who clicked"
                 icon={MousePointerClick}
-                color="text-indigo-400"
+                colorClass="text-indigo-400 bg-indigo-500/10 border-indigo-500/20"
               />
               <StatCard
                 label="Total Conversions"
                 value={totals.conversions.toLocaleString()}
-                sublabel="Goal completions"
+                sublabel="Completed goals"
                 icon={Target}
-                color="text-emerald-400"
+                colorClass="text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
               />
               <StatCard
                 label="Total Spend"
@@ -298,23 +333,23 @@ export default function PerformanceData() {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}`}
-                sublabel="Total advertising budget used"
+                sublabel="Budget consumed"
                 icon={DollarSign}
-                color="text-amber-400"
+                colorClass="text-amber-400 bg-amber-500/10 border-amber-500/20"
               />
               <StatCard
                 label="Click-Through Rate"
                 value={`${overallCtr}%`}
                 sublabel="Clicks ÷ Impressions"
                 icon={TrendingUp}
-                color="text-cyan-400"
+                colorClass="text-cyan-400 bg-cyan-500/10 border-cyan-500/20"
               />
               <StatCard
                 label="Cost per Conversion"
                 value={`$${costPerConversion}`}
                 sublabel="Spend ÷ Conversions"
-                icon={BarChart2}
-                color="text-rose-400"
+                icon={Shield}
+                colorClass="text-rose-400 bg-rose-500/10 border-rose-500/20"
               />
             </div>
           </div>
@@ -325,7 +360,7 @@ export default function PerformanceData() {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : !perfData || perfData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+          <div className="surface-elevated rounded-2xl flex flex-col items-center justify-center py-24 gap-4 text-center">
             <div className="p-4 rounded-2xl bg-accent text-muted-foreground">
               <BarChart2 className="w-8 h-8" />
             </div>
@@ -337,7 +372,7 @@ export default function PerformanceData() {
             </div>
           </div>
         ) : filteredData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+          <div className="surface-elevated rounded-2xl flex flex-col items-center justify-center py-24 gap-4 text-center">
             <div className="p-4 rounded-2xl bg-accent text-muted-foreground">
               <CalendarRange className="w-8 h-8" />
             </div>
@@ -350,50 +385,77 @@ export default function PerformanceData() {
           </div>
         ) : (
           <>
-            {/* Charts */}
             <div>
               <h2 className="text-sm font-semibold text-foreground mb-1">Campaign Charts</h2>
               <p className="text-xs text-muted-foreground mb-4">
-                Visual breakdown of key metrics per campaign. Hover over any bar for exact values.
+                Visual breakdown of campaign outcomes and spend efficiency. Hover over any bar for exact values.
               </p>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                {/* Impressions & Clicks */}
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <p className="text-sm font-semibold text-foreground mb-0.5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="surface-elevated rounded-2xl p-5 card-hover">
+                  <p className="text-sm font-semibold text-foreground mb-1">
                     Impressions vs. Clicks
                   </p>
                   <p className="text-xs text-muted-foreground mb-4">
-                    How many people saw each ad versus how many clicked through.
+                    Compares visibility against interaction for each campaign.
                   </p>
-                  <ResponsiveContainer width="100%" height={240}>
+
+                  <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={chartData} margin={{ top: 4, right: 4, left: -10, bottom: 40 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="name" tick={<CampaignTick />} axisLine={false} tickLine={false} interval={0} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="hsl(var(--border))"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={<CampaignTick />}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={0}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip content={<ChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                      <Bar dataKey="Impressions" fill="hsl(221 83% 63%)" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Clicks" fill="hsl(245 58% 60%)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Impressions" fill="hsl(221 83% 63%)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="Clicks" fill="hsl(245 58% 60%)" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
-                {/* Conversions */}
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <p className="text-sm font-semibold text-foreground mb-0.5">
+                <div className="surface-elevated rounded-2xl p-5 card-hover">
+                  <p className="text-sm font-semibold text-foreground mb-1">
                     Conversions per Campaign
                   </p>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Number of completed goals (purchases, sign-ups, etc.) attributed to each campaign.
+                    Number of completed goals attributed to each campaign.
                   </p>
-                  <ResponsiveContainer width="100%" height={240}>
+
+                  <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={chartData} margin={{ top: 4, right: 4, left: -10, bottom: 40 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="name" tick={<CampaignTick />} axisLine={false} tickLine={false} interval={0} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="hsl(var(--border))"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={<CampaignTick />}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={0}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip content={<ChartTooltip />} />
-                      <Bar dataKey="Conversions" radius={[4, 4, 0, 0]}>
+                      <Bar dataKey="Conversions" radius={[6, 6, 0, 0]}>
                         {chartData.map((_, i) => (
                           <Cell key={i} fill={CAMPAIGN_COLORS[i % CAMPAIGN_COLORS.length]} />
                         ))}
@@ -402,122 +464,152 @@ export default function PerformanceData() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Spend */}
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <p className="text-sm font-semibold text-foreground mb-0.5">
+                <div className="surface-elevated rounded-2xl p-5 card-hover">
+                  <p className="text-sm font-semibold text-foreground mb-1">
                     Advertising Spend per Campaign (USD)
                   </p>
                   <p className="text-xs text-muted-foreground mb-4">
                     Total budget consumed by each campaign during the selected period.
                   </p>
-                  <ResponsiveContainer width="100%" height={240}>
+
+                  <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={chartData} margin={{ top: 4, right: 4, left: -4, bottom: 40 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="name" tick={<CampaignTick />} axisLine={false} tickLine={false} interval={0} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="hsl(var(--border))"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={<CampaignTick />}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={0}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => `$${v}`}
+                      />
                       <Tooltip content={<ChartTooltip />} />
-                      <Bar dataKey="Spend (USD)" fill="hsl(38 92% 55%)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Spend (USD)" fill="hsl(38 92% 55%)" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
-                {/* Clicks → Conversions funnel */}
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <p className="text-sm font-semibold text-foreground mb-0.5">
+                <div className="surface-elevated rounded-2xl p-5 card-hover">
+                  <p className="text-sm font-semibold text-foreground mb-1">
                     Clicks to Conversions — Funnel View
                   </p>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Compares clicks against conversions to reveal which campaigns convert visitors most efficiently.
+                    Shows which campaigns convert traffic most efficiently.
                   </p>
-                  <ResponsiveContainer width="100%" height={240}>
+
+                  <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={chartData} margin={{ top: 4, right: 4, left: -10, bottom: 40 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="name" tick={<CampaignTick />} axisLine={false} tickLine={false} interval={0} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="hsl(var(--border))"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={<CampaignTick />}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={0}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip content={<ChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                      <Bar dataKey="Clicks" fill="hsl(245 58% 60%)" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="Conversions" fill="hsl(152 69% 45%)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Clicks" fill="hsl(245 58% 60%)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="Conversions" fill="hsl(152 69% 45%)" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
             </div>
 
-            {/* Data Table */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Campaign Records
-                    {hasFilter && (
-                      <span className="text-muted-foreground font-normal ml-1">
-                        — {filteredData.length} shown (filtered)
-                      </span>
-                    )}
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Raw performance data rows from Airtable. Derived metrics (Click-Through Rate,
-                    Conversion Rate, Cost per Click) are calculated from the source figures.
-                  </p>
-                </div>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold text-foreground">
+                  Campaign Records
+                  {hasFilter && (
+                    <span className="text-muted-foreground font-normal ml-1">
+                      — {filteredData.length} shown (filtered)
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Raw campaign metrics from Airtable with derived efficiency indicators.
+                </p>
               </div>
-              <div className="rounded-xl border border-border overflow-hidden">
+
+              <div className="surface-elevated rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border bg-muted/30">
+                      <tr className="border-b border-border bg-muted/15">
                         {[
-                          { label: "Campaign Name", title: "" },
-                          { label: "Impressions", title: "Total ad views" },
-                          { label: "Clicks", title: "Users who clicked" },
-                          { label: "Conversions", title: "Completed goals" },
-                          { label: "Spend (USD)", title: "Budget consumed" },
-                          { label: "Click-Through Rate", title: "Clicks ÷ Impressions × 100" },
-                          { label: "Conversion Rate", title: "Conversions ÷ Clicks × 100" },
-                          { label: "Cost per Click", title: "Spend ÷ Clicks" },
-                          { label: "Reporting Period", title: "" },
-                        ].map(({ label, title }) => (
+                          { label: "Campaign Name" },
+                          { label: "Impressions" },
+                          { label: "Clicks" },
+                          { label: "Conversions" },
+                          { label: "Spend (USD)" },
+                          { label: "Click-Through Rate" },
+                          { label: "Conversion Rate" },
+                          { label: "Cost per Click" },
+                          { label: "Reporting Period" },
+                        ].map(({ label }) => (
                           <th
                             key={label}
-                            title={title}
-                            className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                            className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"
                           >
                             {label}
                           </th>
                         ))}
                       </tr>
                     </thead>
+
                     <tbody>
                       {filteredData.map((row, idx) => {
                         const ctr =
                           row.impressions > 0
                             ? ((row.clicks / row.impressions) * 100).toFixed(2)
                             : "0.00";
+
                         const convRate =
                           row.clicks > 0
                             ? ((row.conversions / row.clicks) * 100).toFixed(2)
                             : "0.00";
-                        const cpc =
-                          row.clicks > 0
-                            ? (row.spend / row.clicks).toFixed(2)
-                            : "0.00";
+
+                        const cpc = row.clicks > 0 ? (row.spend / row.clicks).toFixed(2) : "0.00";
+
                         return (
                           <tr
                             key={row.recordId}
                             className={`border-b border-border last:border-0 hover:bg-accent/10 transition-colors ${
-                              idx % 2 === 0 ? "bg-card" : "bg-background"
+                              idx % 2 === 0 ? "bg-card/50" : "bg-background/20"
                             }`}
                           >
                             <td className="px-4 py-3 text-xs font-medium text-foreground whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <span
                                   className="w-2 h-2 rounded-full shrink-0"
-                                  style={{ background: CAMPAIGN_COLORS[idx % CAMPAIGN_COLORS.length] }}
+                                  style={{
+                                    background:
+                                      CAMPAIGN_COLORS[idx % CAMPAIGN_COLORS.length],
+                                  }}
                                 />
                                 {row.campaignName}
                               </div>
                             </td>
+
                             <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
                               {row.impressions.toLocaleString()}
                             </td>
