@@ -275,30 +275,34 @@ function AdminControlPanel({ onGoToLogs }: { onGoToLogs: () => void }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-4">
+        <div
+          onClick={() => setLocation("/logs")}
+          className="rounded-2xl border border-red-500/15 bg-red-500/5 p-4 cursor-pointer hover:bg-red-500/10 transition"
+          >
           <p className="text-xs font-semibold text-foreground mb-1">Status control</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Use the workflow table action menu to update workflow states.
+            Review workflow states, failures, and execution behaviour in the logs view.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-4">
+        <div
+          onClick={() => setLocation("/settings")}
+          className="rounded-2xl border border-red-500/15 bg-red-500/5 p-4 cursor-pointer hover:bg-red-500/10 transition"
+          >
           <p className="text-xs font-semibold text-foreground mb-1">User governance</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Backend role assignment is active. Admin UI can be layered next.
+            Manage access, roles, and administrative controls from settings.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-4">
-          <p className="text-xs font-semibold text-foreground mb-1">Deep diagnostics</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs mt-3 bg-transparent rounded-xl"
-            onClick={onGoToLogs}
+        <div
+          onClick={() => setLocation("/system-logs")}
+          className="rounded-2xl border border-red-500/15 bg-red-500/5 p-4 cursor-pointer hover:bg-red-500/10 transition"
           >
-            Open execution logs
-          </Button>
+          <p className="text-xs font-semibold text-foreground mb-1">Deep diagnostics</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Inspect system-level events, infrastructure issues, and platform diagnostics.
+          </p>
         </div>
       </div>
     </div>
