@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Shield } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { Eye, EyeOff, Chrome, KeyRound } from "lucide-react";
 
 export default function AuthPanel() {
   const [mode, setMode] = useState("signin");
@@ -12,6 +13,8 @@ export default function AuthPanel() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const utils = trpc.useUtils();
   const syncSession = trpc.auth.exchangeSupabaseSession.useMutation();
@@ -62,7 +65,7 @@ export default function AuthPanel() {
           </div>
           <h1 className="text-xl font-semibold mt-4">AgentOps Platform</h1>
           <p className="text-sm text-muted-foreground">
-            {mode === "signin" ? "Sign in to continue" : "Create an account"}
+            {mode === "signin" ? "Sign in to monitor workflows, track agents, and act without complexity." : "Create an account"}
           </p>
         </div>
 
@@ -71,7 +74,22 @@ export default function AuthPanel() {
         )}
 
         <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <div className="relative">
+          <Input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="pr-10"
+            />
+          <button
+            type="button"
+            onClick={() => setShowPassword((s) => !s)}
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+            >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
 
         <Button onClick={handleSubmit} disabled={loading}>
           {loading ? "Processing..." : mode === "signin" ? "Sign in" : "Sign up"}
@@ -79,6 +97,53 @@ export default function AuthPanel() {
 
         <button onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-xs text-muted-foreground">
           {mode === "signin" ? "Create account" : "Already have an account? Sign in"}
+        </button>
+
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await supabase.auth.signInWithOAuth({
+              provider: "google",
+              options: { redirectTo: window.location.origin },
+            });
+          }}
+          >
+          <Chrome className="w-4 h-4 mr-2" />
+          Continue with Google
+        </Button><Button
+                   variant="outline"
+                   onClick={async () => {
+                     await supabase.auth.signInWithOAuth({
+                       provider: "google",
+                       options: { redirectTo: window.location.origin },
+                     });
+                   }}
+                   >
+          <Chrome className="w-4 h-4 mr-2" />
+          Continue with Google
+        </Button>
+        <button
+          onClick={async () => {
+            if (!email) {
+              toast.error("Enter your email first");
+              return;
+            }
+            
+            setResetLoading(true);
+            try {
+              const { error } = await supabase.auth.resetPasswordForEmail(email);
+              if (error) throw error;
+              toast.success("Check your email for reset link");
+            } catch (e: any) {
+              toast.error(e.message);
+            } finally {
+              setResetLoading(false);
+            }
+          }}
+          className="text-xs text-primary"
+          >
+          <KeyRound className="inline w-3 h-3 mr-1" />
+          {resetLoading ? "Sending..." : "Forgot password?"}
         </button>
       </div>
     </div>
