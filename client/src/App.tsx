@@ -1,3 +1,5 @@
+import HomePage from "./pages/HomePage";
+import AuthPanel from "./components/AuthPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -21,6 +23,8 @@ import HelpPage from "./pages/HelpPage";
 function Router() {
   return (
     <Switch>
+      <Route path="/home" component={HomePage} />
+      <Route path="/signin" component={AuthPanel} />
       <Route path="/" component={Dashboard} />
       <Route path="/workflows/new" component={WorkflowNew} />
       <Route path="/workflows/:id" component={WorkflowDetail} />
