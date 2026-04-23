@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 import {
   ArrowRight,
   Bot,
@@ -29,6 +30,7 @@ export default function AuthPanel() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [, setLocation] = useLocation();
 
   const utils = trpc.useUtils();
   const syncSession = trpc.auth.exchangeSupabaseSession.useMutation();
