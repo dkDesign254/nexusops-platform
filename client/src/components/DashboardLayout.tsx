@@ -62,34 +62,34 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 
 const NAV_GROUPS = [
   {
-    label: "Home",
+    label: "Start",
     items: [
       { icon: Home, label: "Homepage", path: "/home" },
-      { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+      { icon: LayoutDashboard, label: "Workspace", path: "/" },
     ],
   },
   {
-    label: "Workflows",
+    label: "Build",
     items: [
       { icon: Plus, label: "New Workflow", path: "/workflows/new" },
-      { icon: Activity, label: "Execution Logs", path: "/logs" },
-      { icon: Bot, label: "AI Logs", path: "/ai-logs" },
+      { icon: Activity, label: "Workflow Runs", path: "/logs" },
+      { icon: Bot, label: "AI Activity", path: "/ai-logs" },
     ],
   },
   {
-    label: "Insights",
+    label: "Understand",
     items: [
       { icon: FileText, label: "Reports", path: "/reports" },
-      { icon: TrendingUp, label: "Performance Data", path: "/performance" },
+      { icon: TrendingUp, label: "Performance", path: "/performance" },
       { icon: Sparkles, label: "AI Help", path: "/help" },
     ],
   },
   {
-    label: "Platform",
+    label: "Manage",
     items: [
-      { icon: Webhook, label: "Webhook Simulator", path: "/webhooks" },
-      { icon: Terminal, label: "System Logs", path: "/system-logs" },
-      { icon: CreditCard, label: "Plan & Billing", path: "/settings" },
+      { icon: Webhook, label: "Integrations", path: "/webhooks" },
+      { icon: Terminal, label: "System Health", path: "/system-logs" },
+      { icon: CreditCard, label: "Billing & Workspace", path: "/settings" },
     ],
   },
 ];
@@ -98,6 +98,7 @@ const SIDEBAR_WIDTH_KEY = "agentops-sidebar-width";
 const DEFAULT_WIDTH = 248;
 const MIN_WIDTH = 220;
 const MAX_WIDTH = 360;
+const SIDEBAR_OPEN_KEY = "agentops-sidebar-open";
 
 function useSystemStatus() {
   const [status, setStatus] = useState<"live" | "syncing" | "error">("live");
@@ -257,48 +258,61 @@ function Topbar({
             </DropdownMenuLabel>
 
             <DropdownMenuSeparator />
-
+            
             <DropdownMenuItem
               onClick={() => setLocation("/home")}
               className="cursor-pointer text-xs"
-            >
+              >
               <Home className="mr-2 h-3.5 w-3.5" />
               Homepage
             </DropdownMenuItem>
-
+            
             <DropdownMenuItem
               onClick={() => setLocation("/help")}
               className="cursor-pointer text-xs"
-            >
-              <HelpCircle className="mr-2 h-3.5 w-3.5" />
+              >
+              
+              <Sparkles className="mr-2 h-3.5 w-3.5" />
               AI Help
             </DropdownMenuItem>
-
+            
             <DropdownMenuItem
               onClick={() => setLocation("/settings")}
               className="cursor-pointer text-xs"
-            >
+              >
+              
+              <Settings className="mr-2 h-3.5 w-3.5" />
+              Workspace Settings
+            </DropdownMenuItem>
+            
+            <DropdownMenuItem
+              onClick={() => setLocation("/settings")}
+              className="cursor-pointer text-xs"
+              >
+              
               <CreditCard className="mr-2 h-3.5 w-3.5" />
               Plan & Billing
             </DropdownMenuItem>
-
+            
             <DropdownMenuItem
-              className="cursor-pointer text-xs opacity-50"
-              onClick={() => {}}
-            >
-              <Settings className="mr-2 h-3.5 w-3.5" />
-              Settings
+              onClick={() => setLocation("/system-logs")}
+              className="cursor-pointer text-xs"
+              >
+              
+              <Terminal className="mr-2 h-3.5 w-3.5" />
+              System Health
             </DropdownMenuItem>
-
+            
             <DropdownMenuSeparator />
-
+            
             <DropdownMenuItem
               onClick={logout}
               className="cursor-pointer text-xs text-destructive focus:text-destructive"
-            >
+              >
+              
               <LogOut className="mr-2 h-3.5 w-3.5" />
               Sign out
-            </DropdownMenuItem>
+            0</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -314,11 +328,58 @@ function AppSidebar() {
     refetchInterval: 60000,
   });
 
+  /* state block */
+
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+  try {
+    const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
+  } catch {
+    return DEFAULT_WIDTH;
+  }
+});
+
+const [sidebarOpen, setSidebarOpen] = useState(() => {
+  try {
+    const saved = localStorage.getItem(SIDEBAR_OPEN_KEY);
+    return saved === null ? true : saved === "true";
+  } catch {
+    return true;
+  }
+});
+
+  /* useEffect */
+  
+  useEffect(() => {
+  try {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
+  } catch {}
+}, [sidebarWidth]);
+
+useEffect(() => {
+  try {
+    localStorage.setItem(SIDEBAR_OPEN_KEY, String(sidebarOpen));
+  } catch {}
+}, [sidebarOpen]);
+
   return (
     <Sidebar
       collapsible="icon"
       className="border-r border-sidebar-border bg-sidebar/90 backdrop-blur-xl"
     >
+      /* SidebarProvider */
+      
+      <SidebarProvider
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+        >
+        
+        <LayoutContent setSidebarWidth={setSidebarWidth} breadcrumbs={breadcrumbs}>
+          {children}
+        </LayoutContent>
+      </SidebarProvider>
+
       <SidebarHeader className="border-b border-sidebar-border/70 px-3 py-3">
         <button
           onClick={() => setLocation("/home")}
@@ -550,17 +611,17 @@ function LayoutContent({
     (() => {
       const map: Record<string, string> = {
         "/home": "Homepage",
-        "/": "Dashboard",
-        "/workflows/new": "New Workflow",
-        "/reports": "Reports",
-        "/webhooks": "Webhook Simulator",
-        "/performance": "Performance Data",
-        "/settings": "Plan & Billing",
-        "/system-logs": "System Logs",
-        "/logs": "Execution Logs",
-        "/ai-logs": "AI Logs",
-        "/help": "AI Help",
-      };
+    "/": "Workspace",
+    "/workflows/new": "New Workflow",
+    "/reports": "Reports",
+    "/performance": "Performance",
+    "/webhooks": "Integrations",
+    "/system-logs": "System Health",
+    "/settings": "Billing & Workspace",
+    "/logs": "Workflow Runs",
+    "/ai-logs": "AI Activity",
+    "/help": "AI Help",
+    };
 
       const label = map[location];
       if (!label) {
@@ -648,6 +709,12 @@ function LayoutContent({
         >
           <Sparkles className="w-4 h-4" />
           <span className="text-xs font-medium hidden sm:inline">AI Help</span>
+          <button
+            onClick={() => setLocation("/home")}
+            className="text-sm font-medium"
+            >
+            AgentOps
+          </button>
         </button>
       </SidebarInset>
     </>
