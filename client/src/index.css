@@ -332,3 +332,33 @@ body {
   border: 2px solid transparent;
   background-clip: padding-box;
 }
+
+/* ===== BUTTON SYSTEM ===== */
+
+.btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 14px;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35);
+}
+
+.btn-secondary {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border-radius: 14px;
+  padding: 0.6rem 1rem;
+  border: 1px solid hsl(var(--border));
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: hsl(var(--accent));
+}
