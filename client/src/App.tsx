@@ -16,6 +16,7 @@ import SystemLogsPage from "./pages/SystemLogsPage";
 import ExecutionLogsPage from "./pages/ExecutionLogsPage";
 import AILogsPage from "./pages/AILogsPage";
 import WorkflowConfig from "./pages/WorkflowConfig";
+import HelpPage from "./pages/HelpPage";
 
 function Router() {
   return (
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/logs" component={ExecutionLogsPage} />
       <Route path="/ai-logs" component={AILogsPage} />
       <Route path="/workflows/:id/config" component={WorkflowConfig} />
+      <Route path="/help" component={HelpPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
