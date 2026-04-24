@@ -7,7 +7,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/DashboardFixed";
 import WorkflowNew from "./pages/WorkflowNew";
 import WorkflowDetail from "./pages/WorkflowDetail";
 import ReportsPage from "./pages/ReportsPage";
@@ -49,16 +49,7 @@ function AppShell() {
 
   return (
     <TooltipProvider>
-      <Toaster
-        theme={isDark ? "dark" : "light"}
-        toastOptions={{
-          style: {
-            background: isDark ? "oklch(0.13 0.018 250)" : "oklch(0.99 0.002 250)",
-            border: isDark ? "1px solid oklch(0.22 0.015 250)" : "1px solid oklch(0.9 0.01 250)",
-            color: isDark ? "oklch(0.93 0.01 250)" : "oklch(0.2 0.02 250)",
-          },
-        }}
-      />
+      <Toaster theme={isDark ? "dark" : "light"} />
       <Router />
     </TooltipProvider>
   );
