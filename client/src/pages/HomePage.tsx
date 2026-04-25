@@ -77,7 +77,7 @@ export default function HomePage() {
               className="rounded-xl bg-transparent"
               onClick={() => setLocation("/help")}
             >
-              AI Help
+              Ask GAIA
             </Button>
             <Button
               className="rounded-xl bg-[var(--primary)] text-white hover:opacity-90"
@@ -119,7 +119,7 @@ export default function HomePage() {
                 className="rounded-xl bg-transparent"
                 onClick={() => setLocation("/help")}
               >
-                Let AI guide me
+                Ask GAIA AI
               </Button>
             </div>
 
@@ -157,7 +157,7 @@ export default function HomePage() {
                 "Track AI agents running on Make and n8n",
                 "Inspect execution logs and AI logs",
                 "Review reports and campaign performance",
-                "Guide users with AI Help instead of forcing technical learning first",
+                "Guide users with GAIA AI instead of forcing technical learning first",
                 "Apply governance controls where decisions need oversight",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2">
@@ -220,10 +220,10 @@ export default function HomePage() {
 
             <FeatureCard
               icon={<Sparkles className="w-4 h-4 text-primary" />}
-              title="AI Help"
-              description="Use a guided assistant to understand the product and explain workflows."
+              title="GAIA AI"
+              description="Use the guided assistant to understand the platform and explain workflows."
               onClick={() => setLocation("/help")}
-              cta="Open AI Help"
+              cta="Open GAIA AI"
             />
           </div>
         </section>

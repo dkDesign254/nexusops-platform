@@ -241,7 +241,7 @@ function Topbar({ breadcrumbs }: { breadcrumbs?: { label: string; path?: string 
 
             <DropdownMenuItem onClick={() => setLocation("/help")} className="cursor-pointer text-xs">
               <Sparkles className="mr-2 h-3.5 w-3.5" />
-              AI Help
+              GAIA AI
             </DropdownMenuItem>
 
             <DropdownMenuItem onClick={() => setLocation("/settings")} className="cursor-pointer text-xs">
@@ -409,9 +409,9 @@ function AppSidebar() {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold text-foreground">Need help?</p>
+                <p className="text-xs font-semibold text-foreground">Ask GAIA AI</p>
                 <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                  Use AI Help to understand the app, workflows, and where to go next.
+                  Use GAIA AI to understand the platform, workflows, and where to go next.
                 </p>
               </div>
               <HelpCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -421,12 +421,12 @@ function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip="AI Help"
+                tooltip="GAIA AI"
                 onClick={() => setLocation("/help")}
                 className="h-9 rounded-xl"
               >
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">AI Help</span>
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">GAIA AI</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -526,7 +526,7 @@ function LayoutContent({
         "/settings": "Billing & Workspace",
         "/logs": "Workflow Runs",
         "/ai-logs": "AI Activity",
-        "/help": "AI Help",
+        "/help": "GAIA AI",
       };
 
       const label = map[location];
