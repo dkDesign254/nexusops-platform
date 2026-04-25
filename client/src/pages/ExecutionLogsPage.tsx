@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
@@ -318,11 +318,26 @@ function LogTableRow({
 }
 
 export default function ExecutionLogsPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [runtimeFilter, setRuntimeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("status") ?? "all";
+  });
+  const [runtimeFilter, setRuntimeFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("runtime") ?? "all";
+  });
   const [eventFilter, setEventFilter] = useState("all");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const r = params.get("runtime");
+    const s = params.get("status");
+    if (r) setRuntimeFilter(r);
+    if (s) setStatusFilter(s);
+  }, [location]);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [groupByWorkflow, setGroupByWorkflow] = useState(false);
 
