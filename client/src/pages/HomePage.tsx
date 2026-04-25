@@ -6,12 +6,15 @@ import {
   Bot,
   CheckCircle2,
   FileText,
+  Moon,
   Shield,
   Sparkles,
+  Sun,
   Workflow,
   Zap,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTheme } from "@/contexts/ThemeContext";
 
 function FeatureCard({
   icon,
@@ -49,6 +52,7 @@ function FeatureCard({
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
@@ -72,6 +76,13 @@ export default function HomePage() {
           </button>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl border border-border/60 bg-muted/20 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <Button
               variant="outline"
               className="rounded-xl bg-transparent"
@@ -80,7 +91,7 @@ export default function HomePage() {
               Ask GAIA
             </Button>
             <Button
-              className="rounded-xl bg-[var(--primary)] text-white hover:opacity-90"
+              className="rounded-xl bg-primary text-primary-foreground hover:opacity-90"
               onClick={() => setLocation("/signin")}
             >
               Sign in
@@ -109,7 +120,7 @@ export default function HomePage() {
 
             <div className="flex flex-wrap gap-3">
               <Button
-                className="rounded-xl bg-[var(--primary)] text-white hover:opacity-90"
+                className="rounded-xl bg-primary text-primary-foreground hover:opacity-90"
                 onClick={() => setLocation("/signin")}
               >
                 Enter workspace

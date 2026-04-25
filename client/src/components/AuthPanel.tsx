@@ -5,21 +5,24 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import {
-  ArrowRight,
+  ArrowLeft,
   Bot,
   Brain,
   Chrome,
   Eye,
   EyeOff,
   KeyRound,
+  Moon,
   Shield,
   Sparkles,
+  Sun,
   Workflow,
   Zap,
   BarChart3,
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function AuthPanel() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -31,6 +34,7 @@ export default function AuthPanel() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [, setLocation] = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   const utils = trpc.useUtils();
   const syncSession = trpc.auth.exchangeSupabaseSession.useMutation();
@@ -126,7 +130,26 @@ export default function AuthPanel() {
       <div className="relative min-h-screen">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_30%),radial-gradient(circle_at_left,rgba(16,185,129,0.08),transparent_24%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.06),transparent_22%)]" />
 
-        <div className="relative max-w-[1400px] mx-auto min-h-screen grid grid-cols-1 xl:grid-cols-[1.12fr_0.88fr] gap-10 px-6 py-10 lg:px-10">
+        <div className="relative max-w-[1400px] mx-auto min-h-screen px-6 py-10 lg:px-10">
+          {/* Top bar: back + theme toggle */}
+          <div className="flex items-center justify-between mb-8">
+            <button
+              onClick={() => setLocation("/home")}
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to homepage
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl border border-border/60 bg-muted/20 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[1.12fr_0.88fr] gap-10">
           {/* LEFT: LANDING EXPERIENCE */}
           <div className="flex flex-col justify-center">
             <div className="max-w-2xl">
@@ -298,7 +321,7 @@ export default function AuthPanel() {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="rounded-xl h-10 bg-[var(--primary)] text-white hover:opacity-90 w-full"
+                  className="rounded-xl h-10 bg-primary text-primary-foreground hover:opacity-90 w-full"
                 >
                   {loading
                     ? "Processing..."
@@ -353,6 +376,7 @@ export default function AuthPanel() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

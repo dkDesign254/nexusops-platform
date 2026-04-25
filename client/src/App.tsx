@@ -8,6 +8,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Dashboard from "./pages/Dashboard";
+import { useAuth } from "./_core/hooks/useAuth";
 import WorkflowNew from "./pages/WorkflowNew";
 import WorkflowDetail from "./pages/WorkflowDetail";
 import ReportsPage from "./pages/ReportsPage";
@@ -20,12 +21,18 @@ import AILogsPage from "./pages/AILogsPage";
 import WorkflowConfig from "./pages/WorkflowConfig";
 import HelpPage from "./pages/HelpPage";
 
+function SmartHome() {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  return isAuthenticated ? <Dashboard /> : <HomePage />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/home" component={HomePage} />
       <Route path="/signin" component={AuthPanel} />
-      <Route path="/" component={Dashboard} />
+      <Route path="/" component={SmartHome} />
       <Route path="/workflows/new" component={WorkflowNew} />
       <Route path="/workflows/:id" component={WorkflowDetail} />
       <Route path="/reports" component={ReportsPage} />

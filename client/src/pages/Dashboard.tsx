@@ -170,12 +170,14 @@ function StatCard({
   icon,
   trend,
   color = "default",
+  onClick,
 }: {
   label: string;
   value: number | string;
   icon: React.ReactNode;
   trend?: string;
   color?: "default" | "success" | "warning" | "error" | "info";
+  onClick?: () => void;
 }) {
   const colorMap = {
     default: "text-primary bg-primary/10 ring-1 ring-primary/10",
@@ -186,7 +188,10 @@ function StatCard({
   };
 
   return (
-    <div className="surface-elevated card-hover rounded-2xl p-5">
+    <button
+      onClick={onClick}
+      className={`surface-elevated card-hover rounded-2xl p-5 text-left w-full ${onClick ? "cursor-pointer" : "cursor-default"}`}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className={`p-2.5 rounded-2xl ${colorMap[color]}`}>{icon}</div>
         {trend && (
@@ -201,7 +206,7 @@ function StatCard({
         {value}
       </p>
       <p className="text-xs text-muted-foreground mt-1.5">{label}</p>
-    </div>
+    </button>
   );
 }
 
@@ -1202,24 +1207,28 @@ export default function Dashboard() {
                 value={stats?.total ?? 0}
                 icon={<Activity className="w-4 h-4" />}
                 color="default"
+                onClick={() => setLocation("/logs")}
               />
               <StatCard
                 label="Completed"
                 value={stats?.completed ?? 0}
                 icon={<CheckCircle2 className="w-4 h-4" />}
                 color="success"
+                onClick={() => setLocation("/logs?status=completed")}
               />
               <StatCard
                 label="Pending"
                 value={stats?.pending ?? 0}
                 icon={<Clock className="w-4 h-4" />}
                 color="warning"
+                onClick={() => setLocation("/logs?status=pending")}
               />
               <StatCard
                 label="Failed"
                 value={stats?.failed ?? 0}
                 icon={<AlertTriangle className="w-4 h-4" />}
                 color="error"
+                onClick={() => setLocation("/logs?status=failed")}
               />
             </>
           )}
