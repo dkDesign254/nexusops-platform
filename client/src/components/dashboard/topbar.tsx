@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LANGUAGES, REGIONS, useLocale, useT, type LanguageCode, type RegionCode } from "@/contexts/LocaleContext";
+import { useWorkflows } from "@/hooks/use-workflows";
 
 export interface TopBarProps {
   title?: string;
@@ -21,19 +22,38 @@ export function TopBar({ title = "Dashboard", failedCount = 0 }: TopBarProps): J
   const { theme, toggleTheme } = useTheme();
   const { language, region, setLanguage, setRegion } = useLocale();
   const T = useT();
+  const { data: workflows } = useWorkflows();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("nexusops-read-notif") ?? "[]")); } catch { return new Set(); }
+  });
   const [, setLocation] = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
+
+  const failedWorkflows = workflows
+    .filter((wf) => (wf.status ?? "").toLowerCase() === "failed")
+    .slice(0, 8);
+  const unread = failedWorkflows.filter((wf) => !readIds.has(wf.id));
+  const notifCount = unread.length;
+
+  function markAllRead() {
+    const ids = new Set([...readIds, ...failedWorkflows.map((wf) => wf.id)]);
+    setReadIds(ids);
+    try { localStorage.setItem("nexusops-read-notif", JSON.stringify([...ids])); } catch {}
+  }
 
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (regionRef.current && !regionRef.current.contains(e.target as Node)) setRegionOpen(false);
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setBellOpen(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -201,40 +221,86 @@ export function TopBar({ title = "Dashboard", failedCount = 0 }: TopBarProps): J
       </div>
 
       {/* Notification bell */}
-      <button
-        style={{
-          position: "relative",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--color-text-secondary)",
-          padding: "0.3rem",
-          borderRadius: "var(--radius-sm)",
-        }}
-      >
-        <Bell size={18} />
-        {failedCount > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              background: "var(--color-status-failed)",
-              fontSize: "0.6rem",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-            }}
-          >
-            {failedCount > 9 ? "9+" : failedCount}
-          </span>
+      <div ref={bellRef} style={{ position: "relative" }}>
+        <button
+          onClick={() => { setBellOpen(!bellOpen); setLangOpen(false); setRegionOpen(false); setDropdownOpen(false); }}
+          style={{
+            position: "relative",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: bellOpen ? "var(--color-brand)" : "var(--color-text-secondary)",
+            padding: "0.3rem",
+            borderRadius: "var(--radius-sm)",
+            transition: "color var(--transition-fast)",
+          }}
+          title={T("notif.title")}
+        >
+          <Bell size={18} />
+          {notifCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "var(--color-status-failed)",
+                fontSize: "0.6rem",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+              }}
+            >
+              {notifCount > 9 ? "9+" : notifCount}
+            </span>
+          )}
+        </button>
+        {bellOpen && (
+          <div style={{ ...dropdownPanelStyle, minWidth: 300, maxHeight: 380, overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.65rem var(--space-4)", borderBottom: "1px solid var(--color-border-subtle)" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.8125rem", color: "var(--color-text-primary)" }}>{T("notif.title")}</span>
+              {failedWorkflows.length > 0 && (
+                <button onClick={markAllRead} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem", color: "var(--color-brand)", fontFamily: "var(--font-display)" }}>{T("notif.markRead")}</button>
+              )}
+            </div>
+            {failedWorkflows.length === 0 ? (
+              <p style={{ padding: "var(--space-5) var(--space-4)", fontSize: "0.8125rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", textAlign: "center" }}>{T("notif.noNew")}</p>
+            ) : (
+              <>
+                {failedWorkflows.map((wf) => (
+                  <button
+                    key={wf.id}
+                    onClick={() => { setBellOpen(false); setLocation("/audit"); }}
+                    style={{ ...dropdownItemStyle, flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "0.6rem var(--space-4)", opacity: readIds.has(wf.id) ? 0.55 : 1 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: readIds.has(wf.id) ? "var(--color-text-tertiary)" : "var(--color-status-failed)", flexShrink: 0 }} />
+                      <span style={{ fontSize: "0.8125rem", color: "var(--color-text-primary)", fontWeight: readIds.has(wf.id) ? 400 : 500 }}>{wf.workflow_name ?? wf.workflow_id ?? wf.id}</span>
+                    </div>
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-status-failed)", paddingLeft: 14 }}>{T("notif.failedWf")}</span>
+                  </button>
+                ))}
+                <div style={{ borderTop: "1px solid var(--color-border-subtle)" }}>
+                  <button
+                    onClick={() => { setBellOpen(false); setLocation("/audit"); }}
+                    style={{ ...dropdownItemStyle, color: "var(--color-brand)", fontWeight: 500, width: "100%" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  >
+                    {T("notif.viewAll")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
-      </button>
+      </div>
 
       {/* User dropdown */}
       <div ref={dropdownRef} style={{ position: "relative" }}>

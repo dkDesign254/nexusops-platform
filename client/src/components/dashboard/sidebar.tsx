@@ -9,7 +9,7 @@
 import type { ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Logo } from "@/components/ui/logo";
-import { LayoutDashboard, Workflow, ScrollText, Bot, FileText, BarChart3, Settings, Users, Plug, Key, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Workflow, ScrollText, Bot, FileText, BarChart3, Settings, Users, Plug, Key, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useT } from "@/contexts/LocaleContext";
 
@@ -108,59 +108,103 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps): JSX.El
       </div>
 
       {/* Nav sections */}
-      <nav style={{ flex: 1, padding: "var(--space-4) var(--space-3)", overflowY: "auto" }}>
-        {NAV.map((section) => (
-          <div key={section.title} style={{ marginBottom: "var(--space-5)" }}>
-            {!isCollapsed && (
-              <p
-                style={{
-                  fontSize: "0.625rem",
-                  fontWeight: 600,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: "var(--color-text-tertiary)",
-                  padding: "0 var(--space-2)",
-                  marginBottom: "var(--space-2)",
-                  fontFamily: "var(--font-display)",
-                }}
-              >
-                {section.title}
-              </p>
-            )}
-            {section.items.map((item) => {
-              const isActive = location === item.href;
-              return (
-                <button
-                  key={item.label + item.href}
-                  onClick={() => setLocation(item.href)}
-                  title={isCollapsed ? item.label : undefined}
+      <nav style={{ flex: 1, padding: "var(--space-4) var(--space-3)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1 }}>
+          {NAV.map((section) => (
+            <div key={section.title} style={{ marginBottom: "var(--space-5)" }}>
+              {!isCollapsed && (
+                <p
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "var(--space-3)",
-                    width: "100%",
-                    padding: isCollapsed ? "0.55rem" : "0.5rem var(--space-3)",
-                    borderRadius: "var(--radius-md)",
-                    border: "none",
-                    cursor: "pointer",
-                    justifyContent: isCollapsed ? "center" : "flex-start",
-                    background: isActive ? "rgba(14,164,114,0.1)" : "transparent",
-                    borderLeft: isActive ? "2px solid var(--color-brand)" : "2px solid transparent",
-                    color: isActive ? "var(--color-brand)" : "var(--color-text-secondary)",
+                    fontSize: "0.625rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--color-text-tertiary)",
+                    padding: "0 var(--space-2)",
+                    marginBottom: "var(--space-2)",
                     fontFamily: "var(--font-display)",
-                    fontSize: "0.875rem",
-                    fontWeight: isActive ? 600 : 400,
-                    transition: "all var(--transition-fast)",
-                    marginBottom: 2,
                   }}
                 >
-                  {item.icon}
-                  {!isCollapsed && item.label}
-                </button>
-              );
-            })}
-          </div>
-        ))}
+                  {section.title}
+                </p>
+              )}
+              {section.items.map((item) => {
+                const isActive = location === item.href;
+                return (
+                  <button
+                    key={item.label + item.href}
+                    onClick={() => setLocation(item.href)}
+                    title={isCollapsed ? item.label : undefined}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "var(--space-3)",
+                      width: "100%",
+                      padding: isCollapsed ? "0.55rem" : "0.5rem var(--space-3)",
+                      borderRadius: "var(--radius-md)",
+                      border: "none",
+                      cursor: "pointer",
+                      justifyContent: isCollapsed ? "center" : "flex-start",
+                      background: isActive ? "rgba(14,164,114,0.1)" : "transparent",
+                      borderLeft: isActive ? "2px solid var(--color-brand)" : "2px solid transparent",
+                      color: isActive ? "var(--color-brand)" : "var(--color-text-secondary)",
+                      fontFamily: "var(--font-display)",
+                      fontSize: "0.875rem",
+                      fontWeight: isActive ? 600 : 400,
+                      transition: "all var(--transition-fast)",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {item.icon}
+                    {!isCollapsed && item.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* GAIA AI footer button */}
+        <div style={{ padding: "var(--space-3) 0", borderTop: "1px solid var(--color-border-subtle)" }}>
+          {isCollapsed ? (
+            <button
+              onClick={() => setLocation("/gaia")}
+              title={T("nav.gaiaAi")}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: "100%", padding: "0.55rem", border: "none", borderRadius: "var(--radius-md)",
+                cursor: "pointer",
+                background: location === "/gaia" ? "rgba(14,164,114,0.1)" : "transparent",
+                color: location === "/gaia" ? "var(--color-brand)" : "var(--color-text-secondary)",
+                transition: "all var(--transition-fast)",
+              }}>
+              <Sparkles size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setLocation("/gaia")}
+              style={{
+                display: "flex", alignItems: "center", gap: "var(--space-3)",
+                width: "100%", padding: "0.6rem var(--space-4)",
+                borderRadius: "var(--radius-md)", border: "1px solid",
+                borderColor: location === "/gaia" ? "rgba(14,164,114,0.3)" : "var(--color-border-subtle)",
+                cursor: "pointer", textAlign: "left",
+                background: location === "/gaia" ? "rgba(14,164,114,0.08)" : "transparent",
+                color: location === "/gaia" ? "var(--color-brand)" : "var(--color-text-secondary)",
+                fontFamily: "var(--font-display)", fontSize: "0.875rem", fontWeight: 500,
+                transition: "all var(--transition-fast)",
+              }}
+              onMouseEnter={(e) => { if (location !== "/gaia") { e.currentTarget.style.borderColor = "rgba(14,164,114,0.2)"; e.currentTarget.style.background = "rgba(14,164,114,0.04)"; } }}
+              onMouseLeave={(e) => { if (location !== "/gaia") { e.currentTarget.style.borderColor = "var(--color-border-subtle)"; e.currentTarget.style.background = "transparent"; } }}
+            >
+              <Sparkles size={15} style={{ color: "var(--color-brand)", flexShrink: 0 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600 }}>{T("nav.gaiaAi")}</p>
+                <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--color-text-tertiary)" }}>Ask GAIA · Get help</p>
+              </div>
+            </button>
+          )}
+        </div>
       </nav>
     </aside>
   );

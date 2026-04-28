@@ -1,10 +1,11 @@
-﻿/**
+/**
  * NexusOps - AuditPage (Execution Logs)
  * Route: /audit and /logs (protected)
  */
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useExecutionLogs } from "@/hooks/use-execution-logs";
+import { useT } from "@/contexts/LocaleContext";
 
 const STATUS_COLOR: Record<string, string> = {
   success: "var(--color-status-completed)",
@@ -14,11 +15,18 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function AuditPage(): JSX.Element {
   const { data, loading } = useExecutionLogs();
+  const T = useT();
+
+  const HEADERS = [
+    T("tbl.time"), T("tbl.logId"), T("tbl.event"), T("tbl.step"),
+    T("tbl.runtime"), T("tbl.status"), T("tbl.message"),
+  ];
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Execution Logs" />
+        <TopBar title={T("page.executionLogs")} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto" }}>
             {loading ? (
@@ -27,7 +35,7 @@ export default function AuditPage(): JSX.Element {
               </div>
             ) : data.length === 0 ? (
               <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)" }}>
-                No execution logs yet. Connect a runtime and trigger a workflow.
+                {T("page.noExecLogs")}
               </div>
             ) : (
               <div style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
@@ -35,7 +43,7 @@ export default function AuditPage(): JSX.Element {
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-                        {["Time","Log ID","Event","Step","Runtime","Status","Message"].map((h) => (
+                        {HEADERS.map((h) => (
                           <th key={h} style={{ padding: "0.65rem var(--space-4)", textAlign: "left", fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--font-display)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>

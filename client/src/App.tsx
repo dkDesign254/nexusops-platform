@@ -31,6 +31,7 @@ const AIInteractionsPage = lazy(() => import("./pages/ai-interactions-page"));
 const ReportsPage = lazy(() => import("./pages/reports-page"));
 const PerformancePage = lazy(() => import("./pages/performance-page"));
 const SettingsPage = lazy(() => import("./pages/settings-page"));
+const GAIAPage = lazy(() => import("./pages/gaia-page"));
 
 /** Suspense fallback used while lazy protected pages are loading */
 function PageLoader(): JSX.Element {
@@ -139,6 +140,21 @@ function Router(): JSX.Element {
         <AuthGuard>
           <Suspense fallback={<PageLoader />}>
             <SettingsPage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
+      <Route path="/gaia">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <GAIAPage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
+      {/* Legacy alias */}
+      <Route path="/help">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <GAIAPage />
           </Suspense>
         </AuthGuard>
       </Route>
