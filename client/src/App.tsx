@@ -14,6 +14,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { LocaleProvider } from "./contexts/LocaleContext";
 import { AuthGuard } from "./components/auth/auth-guard";
 import { lazy, Suspense } from "react";
 
@@ -164,7 +165,9 @@ export default function App(): JSX.Element {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark" switchable>
-        <AppShell />
+        <LocaleProvider>
+          <AppShell />
+        </LocaleProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

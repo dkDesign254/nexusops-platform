@@ -156,6 +156,66 @@
 }
 
 /* ================================================================
+   LIGHT THEME OVERRIDES
+   html.light overrides all dark-first :root tokens
+   ================================================================ */
+
+html.light {
+  --background: 210 20% 97%;
+  --foreground: 222 30% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 30% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 30% 10%;
+  --primary: 158 84% 30%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 16% 93%;
+  --secondary-foreground: 222 30% 10%;
+  --muted: 210 16% 93%;
+  --muted-foreground: 217 14% 42%;
+  --accent: 210 16% 90%;
+  --accent-foreground: 222 30% 10%;
+  --destructive: 0 72% 50%;
+  --border: 214 16% 84%;
+  --input: 214 16% 84%;
+  --ring: 158 84% 30%;
+  --sidebar-background: 210 18% 95%;
+  --sidebar-foreground: 222 30% 12%;
+  --sidebar-border: 214 16% 86%;
+  --sidebar-accent: 210 16% 90%;
+  --sidebar-accent-foreground: 222 30% 10%;
+
+  --color-brand: #0a7a55;
+  --color-brand-light: #0ea472;
+  --color-brand-dark: #065c3e;
+
+  --color-bg-base: #f4f6f9;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f0f2f5;
+  --color-bg-hover: rgba(0, 0, 0, 0.04);
+
+  --color-border-subtle: rgba(0, 0, 0, 0.07);
+  --color-border-default: rgba(0, 0, 0, 0.12);
+  --color-border-strong: rgba(0, 0, 0, 0.22);
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary: #9ca3af;
+  --color-text-inverse: #ffffff;
+
+  --color-status-completed: #059669;
+  --color-status-running: #d97706;
+  --color-status-failed: #dc2626;
+  --color-status-pending: #9ca3af;
+  --color-status-cancelled: #7c3aed;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+  --shadow-brand: 0 0 24px rgba(10, 122, 85, 0.18);
+}
+
+/* ================================================================
    BASE STYLES
    ================================================================ */
 
@@ -173,6 +233,16 @@ body {
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Readable body text — switch tables, paragraphs, labels to sans-serif */
+p, td, th, li, label, input, textarea, select, .readable {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* Keep DM Mono only for explicitly monospaced contexts */
+code, pre, .font-mono, .code-inline, .code-block {
+  font-family: "DM Mono", ui-monospace, monospace;
 }
 
 ::selection {
