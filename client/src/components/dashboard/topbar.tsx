@@ -10,7 +10,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LANGUAGES, REGIONS, useLocale, useT, type LanguageCode, type RegionCode } from "@/contexts/LocaleContext";
-import { useWorkflows } from "@/hooks/use-workflows";
+import { supabase } from "@/lib/supabase";
 
 export interface TopBarProps {
   title?: string;
@@ -22,11 +22,11 @@ export function TopBar({ title = "Dashboard", failedCount = 0 }: TopBarProps): J
   const { theme, toggleTheme } = useTheme();
   const { language, region, setLanguage, setRegion } = useLocale();
   const T = useT();
-  const { data: workflows } = useWorkflows();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [failedWorkflows, setFailedWorkflows] = useState<Array<{ id: string; workflow_name: string | null; workflow_id: string | null }>>([]);
   const [readIds, setReadIds] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem("nexusops-read-notif") ?? "[]")); } catch { return new Set(); }
   });
@@ -36,9 +36,18 @@ export function TopBar({ title = "Dashboard", failedCount = 0 }: TopBarProps): J
   const regionRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLDivElement>(null);
 
-  const failedWorkflows = workflows
-    .filter((wf) => (wf.status ?? "").toLowerCase() === "failed")
-    .slice(0, 8);
+  // One-time fetch for notifications — no realtime channel to avoid collision
+  // with the page-level useWorkflows subscription (same channel name would crash)
+  useEffect(() => {
+    supabase
+      .from("workflows")
+      .select("id, workflow_name, workflow_id, status")
+      .ilike("status", "failed")
+      .order("date_requested", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setFailedWorkflows(data ?? []));
+  }, []);
+
   const unread = failedWorkflows.filter((wf) => !readIds.has(wf.id));
   const notifCount = unread.length;
 

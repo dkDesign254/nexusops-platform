@@ -47,7 +47,12 @@ export type TranslationKey =
   | "tour.1.title" | "tour.1.desc" | "tour.2.title" | "tour.2.desc"
   | "tour.3.title" | "tour.3.desc" | "tour.4.title" | "tour.4.desc"
   | "tour.5.title" | "tour.5.desc" | "tour.6.title" | "tour.6.desc"
-  | "tour.7.title" | "tour.7.desc" | "tour.8.title" | "tour.8.desc";
+  | "tour.7.title" | "tour.7.desc" | "tour.8.title" | "tour.8.desc"
+  // Landing page
+  | "landing.signIn" | "landing.startFree" | "landing.features"
+  | "landing.howItWorks" | "landing.ecosystem" | "landing.pricing" | "landing.docs"
+  | "landing.heroTitle" | "landing.heroSub" | "landing.enterWorkspace"
+  | "landing.lightMode" | "landing.darkMode";
 
 type Translations = Record<TranslationKey, string>;
 
@@ -180,6 +185,18 @@ const en: Translations = {
   "tour.7.desc": "Link your workflow data to campaign performance — spend, conversions, and outcomes.",
   "tour.8.title": "GAIA AI (You're here)",
   "tour.8.desc": "Come back here any time you need help navigating the platform, understanding a log, or finding a specific section.",
+  "landing.signIn": "Sign in",
+  "landing.startFree": "Start free",
+  "landing.features": "Features",
+  "landing.howItWorks": "How it works",
+  "landing.ecosystem": "Ecosystem",
+  "landing.pricing": "Pricing",
+  "landing.docs": "Docs",
+  "landing.heroTitle": "Build, govern, and understand the workflows your company runs on.",
+  "landing.heroSub": "NexusOps brings together workflows, logs, reports, AI decisions, runtime monitoring, and governance into one operational workspace.",
+  "landing.enterWorkspace": "Enter workspace",
+  "landing.lightMode": "Switch to light mode",
+  "landing.darkMode": "Switch to dark mode",
 };
 
 const sw: Translations = {
@@ -311,6 +328,18 @@ const sw: Translations = {
   "tour.7.desc": "Unganisha data yako ya mtiririko na utendaji wa kampeni.",
   "tour.8.title": "GAIA AI (Uko hapa)",
   "tour.8.desc": "Rudi hapa wakati wowote unapohitaji msaada wa kuelewa jukwaa.",
+  "landing.signIn": "Ingia",
+  "landing.startFree": "Anza bila malipo",
+  "landing.features": "Vipengele",
+  "landing.howItWorks": "Jinsi inavyofanya kazi",
+  "landing.ecosystem": "Mfumo ikolojia",
+  "landing.pricing": "Bei",
+  "landing.docs": "Nyaraka",
+  "landing.heroTitle": "Jenga, simamia, na elewa mtiririko wa kazi ambao kampuni yako inategemea.",
+  "landing.heroSub": "NexusOps inaunganisha mtiririko wa kazi, kumbukumbu, ripoti, maamuzi ya AI, na utawala katika nafasi moja ya kazi.",
+  "landing.enterWorkspace": "Ingia kwenye nafasi ya kazi",
+  "landing.lightMode": "Badilisha hadi hali ya mwanga",
+  "landing.darkMode": "Badilisha hadi hali ya giza",
 };
 
 const fr: Translations = {
@@ -442,6 +471,18 @@ const fr: Translations = {
   "tour.7.desc": "Reliez vos données de flux aux performances de la campagne.",
   "tour.8.title": "GAIA AI (Vous êtes ici)",
   "tour.8.desc": "Revenez ici à tout moment pour obtenir de l'aide.",
+  "landing.signIn": "Se connecter",
+  "landing.startFree": "Commencer gratuitement",
+  "landing.features": "Fonctionnalités",
+  "landing.howItWorks": "Comment ça marche",
+  "landing.ecosystem": "Écosystème",
+  "landing.pricing": "Tarifs",
+  "landing.docs": "Documentation",
+  "landing.heroTitle": "Construisez, gouvernez et comprenez les flux de travail sur lesquels votre entreprise repose.",
+  "landing.heroSub": "NexusOps réunit les flux de travail, les journaux, les rapports, les décisions IA et la gouvernance dans un seul espace de travail.",
+  "landing.enterWorkspace": "Accéder à l'espace de travail",
+  "landing.lightMode": "Passer en mode clair",
+  "landing.darkMode": "Passer en mode sombre",
 };
 
 const pt: Translations = {
@@ -573,6 +614,18 @@ const pt: Translations = {
   "tour.7.desc": "Conecte seus dados de fluxo ao desempenho de campanha.",
   "tour.8.title": "GAIA AI (Você está aqui)",
   "tour.8.desc": "Volte aqui sempre que precisar de ajuda para navegar na plataforma.",
+  "landing.signIn": "Entrar",
+  "landing.startFree": "Começar grátis",
+  "landing.features": "Recursos",
+  "landing.howItWorks": "Como funciona",
+  "landing.ecosystem": "Ecossistema",
+  "landing.pricing": "Preços",
+  "landing.docs": "Documentação",
+  "landing.heroTitle": "Construa, governe e entenda os fluxos de trabalho nos quais sua empresa se baseia.",
+  "landing.heroSub": "NexusOps reúne fluxos de trabalho, logs, relatórios, decisões de IA e governança em um único espaço de trabalho.",
+  "landing.enterWorkspace": "Entrar no espaço de trabalho",
+  "landing.lightMode": "Mudar para modo claro",
+  "landing.darkMode": "Mudar para modo escuro",
 };
 
 const es: Translations = {
@@ -704,6 +757,18 @@ const es: Translations = {
   "tour.7.desc": "Conecta tus datos de flujo al rendimiento de la campaña.",
   "tour.8.title": "GAIA AI (Estás aquí)",
   "tour.8.desc": "Vuelve aquí cuando necesites ayuda para navegar por la plataforma.",
+  "landing.signIn": "Iniciar sesión",
+  "landing.startFree": "Empezar gratis",
+  "landing.features": "Características",
+  "landing.howItWorks": "Cómo funciona",
+  "landing.ecosystem": "Ecosistema",
+  "landing.pricing": "Precios",
+  "landing.docs": "Documentación",
+  "landing.heroTitle": "Construye, gobierna y comprende los flujos de trabajo en los que se basa tu empresa.",
+  "landing.heroSub": "NexusOps reúne flujos de trabajo, registros, informes, decisiones de IA y gobernanza en un único espacio de trabajo.",
+  "landing.enterWorkspace": "Entrar al espacio de trabajo",
+  "landing.lightMode": "Cambiar a modo claro",
+  "landing.darkMode": "Cambiar a modo oscuro",
 };
 
 export const TRANSLATIONS: Record<string, Translations> = { en, sw, fr, pt, es };
