@@ -279,6 +279,106 @@ export const workflowsRouter = router({
       return { id, status: "completed" as const };
     }),
 
+  /**
+   * cancel — marks a running or pending workflow as "cancelled".
+   * Writes a governance cancellation log entry.
+   * Requires authentication.
+   */
+  cancel: protectedProcedure
+    .input(z.object({ id: z.string(), reason: z.string().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const wf = await getWorkflowById(input.id);
+      if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow not found" });
+
+      const allowedStatuses = ["running", "pending"];
+      const currentStatus = (wf as Record<string, unknown>).status as string | undefined;
+      if (!allowedStatuses.includes(currentStatus ?? "")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Cannot cancel a workflow with status "${currentStatus}". Only running or pending workflows can be cancelled.` });
+      }
+
+      await updateWorkflowStatus(input.id, "cancelled");
+      await createExecutionLog({
+        workflowId: input.id,
+        step: "Workflow Cancellation",
+        eventType: "cancellation",
+        status: "info",
+        message: `Workflow cancelled by ${ctx.user.name ?? ctx.user.email ?? "user"}. Reason: ${input.reason ?? "Not specified"}.`,
+      });
+
+      return { id: input.id, status: "cancelled" as const };
+    }),
+
+  /**
+   * retry — re-runs a failed or cancelled workflow from scratch.
+   * Creates a new workflow record linked to the original, re-runs all steps.
+   * Requires authentication.
+   */
+  retry: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const original = await getWorkflowById(input.id);
+      if (!original) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow not found" });
+
+      const currentStatus = (original as Record<string, unknown>).status as string | undefined;
+      const retryableStatuses = ["failed", "cancelled"];
+      if (!retryableStatuses.includes(currentStatus ?? "")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Cannot retry a workflow with status "${currentStatus}". Only failed or cancelled workflows can be retried.` });
+      }
+
+      const newId = nanoid(12);
+      const requester = (original as Record<string, unknown>).requested_by as string || ctx.user.name || "Unknown";
+      const runtime = ((original as Record<string, unknown>).runtime_used as string || "make").toLowerCase() as "make" | "n8n";
+      const webhookUrl = (original as Record<string, unknown>).webhook_url as string | null | undefined;
+
+      // Create retry workflow
+      await createWorkflow({
+        id: newId,
+        name: "Weekly Marketing Performance Reporting",
+        runtime,
+        status: "pending",
+        requestedBy: requester,
+        webhookUrl: webhookUrl ?? null,
+      });
+
+      await createExecutionLog({
+        workflowId: newId,
+        step: "Workflow Intake",
+        eventType: "intake",
+        status: "success",
+        message: `Retry of workflow ${input.id} initiated by ${ctx.user.name ?? ctx.user.email ?? "user"}. New ID: ${newId}.`,
+      });
+
+      await updateWorkflowStatus(newId, "running");
+
+      await createExecutionLog({
+        workflowId: newId,
+        step: "Runtime Routing",
+        eventType: "routing",
+        status: "success",
+        message: `Routing decision: retry assigned to ${runtime.toUpperCase()} runtime.`,
+      });
+
+      await dispatchToRuntime(newId, runtime, webhookUrl, undefined);
+
+      try {
+        await generateAIReport(newId, requester);
+      } catch {
+        await updateWorkflowStatus(newId, "failed");
+        return { id: newId, originalId: input.id, status: "failed" as const };
+      }
+
+      await updateWorkflowStatus(newId, "completed", new Date());
+      await createExecutionLog({
+        workflowId: newId,
+        step: "Workflow Completion",
+        eventType: "completion",
+        status: "success",
+        message: `Retry workflow completed successfully.`,
+      });
+
+      return { id: newId, originalId: input.id, status: "completed" as const };
+    }),
+
   getReport: publicProcedure
     .input(z.object({ workflowId: z.string() }))
     .query(async ({ input }) => {
