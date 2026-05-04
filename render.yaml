@@ -1,0 +1,124 @@
+# render.yaml — NexusOps deployment configuration for Render.com
+# https://render.com/docs/render-yaml-ref
+#
+# This file defines two services:
+#   1. nexusops-server  — Node.js Express/tRPC backend
+#   2. nexusops-client  — Static React SPA (Vite build)
+#
+# Deploy: connect this repo to Render, it will auto-detect render.yaml.
+
+services:
+  # ─── Backend API ──────────────────────────────────────────────────────────────
+  - type: web
+    name: nexusops-server
+    runtime: node
+    region: oregon
+    plan: starter
+
+    # Build & start
+    rootDir: .
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build:server
+    startCommand: node dist/server/index.js
+
+    # Health check
+    healthCheckPath: /health
+
+    # Auto-deploy on push to main
+    autoDeploy: true
+    branch: main
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Supabase
+      - key: SUPABASE_URL
+        sync: false                     # set manually in Render dashboard
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # Database (direct Postgres URL for Drizzle / raw queries)
+      - key: DATABASE_URL
+        sync: false
+
+      # Airtable
+      - key: AIRTABLE_TOKEN
+        sync: false
+      - key: AIRTABLE_BASE_ID
+        sync: false
+
+      # Webhooks
+      - key: MAKE_WEBHOOK_SECRET
+        sync: false
+      - key: N8N_WEBHOOK_SECRET
+        sync: false
+
+      # Stripe
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # LLM / Forge gateway
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: BUILT_IN_FORGE_API_URL
+        sync: false
+
+      # Session / JWT
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # CORS — set to your Render static site URL or custom domain
+      - key: CLIENT_ORIGIN
+        sync: false
+
+  # ─── Frontend SPA ─────────────────────────────────────────────────────────────
+  - type: web
+    name: nexusops-client
+    runtime: static
+    region: oregon
+    plan: starter
+
+    rootDir: client
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    staticPublishPath: ./dist
+
+    # SPA fallback — all routes → index.html
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+
+    envVars:
+      # Supabase public keys (safe to expose — these are anon keys)
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+
+      # Airtable (read-only personal access token for client-side hooks)
+      - key: VITE_AIRTABLE_TOKEN
+        sync: false
+      - key: VITE_AIRTABLE_BASE_ID
+        sync: false
+
+      # API base URL — should point to nexusops-server service URL
+      - key: VITE_API_BASE_URL
+        sync: false

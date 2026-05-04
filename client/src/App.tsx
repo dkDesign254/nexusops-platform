@@ -36,6 +36,9 @@ const SettingsPage = lazy(() => import("./pages/settings-page"));
 const GAIAPage = lazy(() => import("./pages/gaia-page"));
 const IntegrationsPage = lazy(() => import("./pages/integrations-page"));
 const BillingPage = lazy(() => import("./pages/billing-page"));
+const AdminPage = lazy(() => import("./pages/admin-page"));
+const AgentsPage = lazy(() => import("./pages/agents-page"));
+const FAQPage = lazy(() => import("./pages/faq-page"));
 
 /** Suspense fallback used while lazy protected pages are loading */
 function PageLoader(): JSX.Element {
@@ -176,6 +179,25 @@ function Router(): JSX.Element {
             <BillingPage />
           </Suspense>
         </AuthGuard>
+      </Route>
+      <Route path="/admin">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <AdminPage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
+      <Route path="/agents">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <AgentsPage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
+      <Route path="/faq">
+        <Suspense fallback={<PageLoader />}>
+          <FAQPage />
+        </Suspense>
       </Route>
 
       {/* Catch-all */}

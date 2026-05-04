@@ -39,8 +39,45 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Health check — used by Render to determine instance readiness
-  app.get("/health", (_req, res) => {
-    res.status(200).json({ status: "ok", ts: new Date().toISOString() });
+  // Returns per-service status so ops teams can diagnose partial outages.
+  app.get("/health", async (_req, res) => {
+    const ts = new Date().toISOString();
+
+    // Supabase — check if URL + service role key are configured
+    const supabaseConfigured = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    let supabase: "ok" | "degraded" | "unconfigured" = "unconfigured";
+    if (supabaseConfigured) {
+      try {
+        const probe = await fetch(`${process.env.SUPABASE_URL}/rest/v1/`, {
+          headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY! },
+          signal: AbortSignal.timeout(3000),
+        });
+        supabase = probe.ok ? "ok" : "degraded";
+      } catch {
+        supabase = "degraded";
+      }
+    }
+
+    // Airtable — check if token is configured
+    const airtable: "ok" | "unconfigured" = process.env.AIRTABLE_TOKEN ? "ok" : "unconfigured";
+
+    // Stripe — check if secret key is configured
+    const stripe: "ok" | "unconfigured" = process.env.STRIPE_SECRET_KEY ? "ok" : "unconfigured";
+
+    // LLM — check if any LLM credential is configured
+    const llm: "ok" | "unconfigured" =
+      process.env.BUILT_IN_FORGE_API_URL || process.env.ANTHROPIC_API_KEY ? "ok" : "unconfigured";
+
+    // Make / n8n — check if webhook secrets are configured
+    const make: "ok" | "unconfigured" = process.env.MAKE_WEBHOOK_SECRET ? "ok" : "unconfigured";
+    const n8n: "ok" | "unconfigured" = process.env.N8N_WEBHOOK_SECRET ? "ok" : "unconfigured";
+
+    const allOk = supabase === "ok";
+    res.status(allOk ? 200 : 207).json({
+      status: allOk ? "ok" : "degraded",
+      ts,
+      services: { supabase, airtable, stripe, llm, make, n8n },
+    });
   });
 
   // Inbound webhooks for Make, n8n, and Stripe
