@@ -4,7 +4,7 @@
  *
  * In-app guide, keyword router, section cards, FAQ, and platform walkthrough tour.
  */
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
@@ -13,8 +13,10 @@ import { useT } from "@/contexts/LocaleContext";
 import {
   Activity, ArrowRight, BarChart3, Bot, Brain, ChevronDown, ChevronUp,
   FileText, LayoutDashboard, MessageSquareText, Settings, Sparkles, Workflow,
+  Upload, File, X, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 // ── Tour ────────────────────────────────────────────────────────────────────
 
@@ -72,6 +74,174 @@ function SectionCard({ icon, title, desc, cta, onClick }: { icon: React.ReactNod
       <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", lineHeight: 1.55, marginBottom: "var(--space-3)" }}>{desc}</p>
       <p style={{ fontSize: "0.75rem", color: "var(--color-brand)", fontFamily: "var(--font-display)", fontWeight: 500 }}>{cta}</p>
     </button>
+  );
+}
+
+// ── Document Upload & Analysis (Phase 14) ────────────────────────────────────
+
+type AnalysisMode = "use_case" | "governance_risks" | "workflow_plan";
+
+const ANALYSIS_MODES: Array<{ value: AnalysisMode; label: string; prompt: string }> = [
+  {
+    value: "use_case",
+    label: "Use Case Builder",
+    prompt: "Analyse this document and identify 3-5 specific AI automation use cases that NexusOps could govern. For each use case, provide: name, description, recommended runtime (Make/n8n), governance considerations, and expected business value. Format as a numbered list.",
+  },
+  {
+    value: "governance_risks",
+    label: "Governance Risk Scan",
+    prompt: "Scan this document for AI governance risks. Identify: data privacy concerns, bias risks, auditability gaps, compliance considerations, and human oversight requirements. Provide a risk level (Low/Medium/High) for each. Format as a structured report.",
+  },
+  {
+    value: "workflow_plan",
+    label: "Workflow Plan",
+    prompt: "Based on this document, design a step-by-step marketing automation workflow that could be implemented in NexusOps. Include: trigger, data sources, processing steps, AI calls, approval gates, and output. Format as a numbered workflow with step types (intake/execution/ai_call/report/completion).",
+  },
+];
+
+function DocumentUploadPanel(): JSX.Element {
+  const [file, setFile] = useState<File | null>(null);
+  const [fileContent, setFileContent] = useState<string>("");
+  const [mode, setMode] = useState<AnalysisMode>("use_case");
+  const [analysing, setAnalysing] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const gaiaMutation = trpc.gaia.chat.useMutation();
+
+  const readFile = useCallback((f: File): void => {
+    if (f.size > 500_000) { toast.error("File too large — max 500 KB"); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = (e.target?.result as string) ?? "";
+      setFile(f);
+      setFileContent(text.slice(0, 8000)); // cap at 8000 chars to stay within context
+      setResult(null);
+    };
+    reader.readAsText(f);
+  }, []);
+
+  function handleDrop(e: React.DragEvent): void {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) readFile(f);
+  }
+
+  async function analyse(): Promise<void> {
+    if (!fileContent) { toast.error("Upload a document first"); return; }
+    setAnalysing(true);
+    const selectedMode = ANALYSIS_MODES.find((m) => m.value === mode)!;
+    try {
+      const res = await gaiaMutation.mutateAsync({
+        message: `${selectedMode.prompt}\n\n--- DOCUMENT START ---\n${fileContent}\n--- DOCUMENT END ---`,
+        pageContext: "gaia-document-analysis",
+      });
+      setResult(res.text || "No analysis returned.");
+    } catch {
+      setResult("GAIA analysis unavailable. Check your LLM configuration.");
+      toast.error("Analysis failed");
+    } finally {
+      setAnalysing(false);
+    }
+  }
+
+  return (
+    <section style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "var(--space-5)" }}>
+        <div style={{ padding: "var(--space-2)", background: "rgba(14,164,114,0.1)", borderRadius: "var(--radius-md)", border: "1px solid rgba(14,164,114,0.2)" }}>
+          <Upload size={16} style={{ color: "var(--color-brand)" }} />
+        </div>
+        <div>
+          <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text-primary)", margin: 0 }}>Document Analysis</p>
+          <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", margin: "0.2rem 0 0" }}>Upload a brief, strategy document, or spec — GAIA will analyse it for governance use cases and risks.</p>
+        </div>
+      </div>
+
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        style={{
+          border: `2px dashed ${dragging ? "var(--color-brand)" : "var(--color-border-subtle)"}`,
+          borderRadius: "var(--radius-md)",
+          padding: "var(--space-6)",
+          textAlign: "center",
+          cursor: "pointer",
+          background: dragging ? "rgba(61,255,160,0.04)" : "transparent",
+          transition: "all 0.15s",
+          marginBottom: "var(--space-4)",
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".txt,.md,.csv,.json,.rtf"
+          style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); }}
+        />
+        {file ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", justifyContent: "center" }}>
+            <File size={20} style={{ color: "var(--color-brand)" }} />
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--color-text-primary)" }}>{file.name}</span>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-tertiary)" }}>({Math.round(file.size / 1024)} KB)</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setFile(null); setFileContent(""); setResult(null); }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <div>
+            <Upload size={24} style={{ color: "var(--color-text-tertiary)", margin: "0 auto var(--space-2)" }} />
+            <p style={{ margin: "0 0 0.25rem", fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--color-text-secondary)" }}>
+              Drop a file or click to browse
+            </p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-body)" }}>
+              .txt, .md, .csv, .json — max 500 KB
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Analysis mode */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
+        {ANALYSIS_MODES.map((m) => (
+          <button
+            key={m.value}
+            onClick={() => setMode(m.value)}
+            style={{ padding: "0.375rem 0.75rem", borderRadius: "var(--radius-sm)", border: `1px solid ${mode === m.value ? "var(--color-brand)" : "var(--color-border-subtle)"}`, background: mode === m.value ? "rgba(61,255,160,0.08)" : "transparent", color: mode === m.value ? "var(--color-brand)" : "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: mode === m.value ? 600 : 400, cursor: "pointer" }}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={() => void analyse()}
+        disabled={analysing || !fileContent}
+        style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.25rem", background: analysing || !fileContent ? "rgba(61,255,160,0.1)" : "var(--color-brand)", border: "none", borderRadius: "var(--radius-md)", color: analysing || !fileContent ? "var(--color-brand)" : "var(--color-bg-base)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.875rem", cursor: analysing || !fileContent ? "not-allowed" : "pointer" }}
+      >
+        {analysing ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Sparkles size={15} />}
+        {analysing ? "Analysing…" : "Analyse with GAIA"}
+      </button>
+
+      {/* Result */}
+      {result && (
+        <div style={{ marginTop: "var(--space-5)", background: "var(--color-bg-elevated)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-md)", padding: "var(--space-4)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "var(--space-3)" }}>
+            <Sparkles size={13} style={{ color: "var(--color-brand)" }} />
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.8125rem", color: "var(--color-brand)" }}>GAIA Analysis</span>
+          </div>
+          <pre style={{ margin: 0, fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-text-secondary)", whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.7 }}>
+            {result}
+          </pre>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -248,6 +418,9 @@ export default function GAIAPage(): JSX.Element {
                 ))}
               </div>
             </section>
+
+            {/* Document Upload & Analysis */}
+            <DocumentUploadPanel />
 
             {/* FAQ */}
             <section style={{ background: "var(--color-bg-surface)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", border: "1px solid var(--color-border-subtle)" }}>
