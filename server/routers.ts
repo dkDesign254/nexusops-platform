@@ -7,6 +7,8 @@ import { logsRouter } from "./routers/logs";
 import { airtableRouter } from "./routers/airtable";
 import { intelligenceRouter } from "./routers/intelligence";
 import { syncRouter } from "./routers/sync";
+import { gaiaRouter } from "./routers/gaia";
+import { billingRouter } from "./routers/billing";
 import { z } from "zod";
 import { countUsers, getDb, getUserByOpenId, upsertUser } from "./db";
 import { createSessionToken } from "./_core/sdk";
@@ -124,6 +126,8 @@ export const appRouter = router({
   airtable: airtableRouter,
   intelligence: intelligenceRouter,
   sync: syncRouter,
+  gaia: gaiaRouter,
+  billing: billingRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -12,6 +12,7 @@ import { ProblemStrip } from "@/components/landing/problem-strip";
 import { FeaturesGrid } from "@/components/landing/features-grid";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Ecosystem } from "@/components/landing/ecosystem";
+import { PricingSection } from "@/components/landing/pricing-section";
 import { StatsStrip } from "@/components/landing/stats-strip";
 import { CTABanner } from "@/components/landing/cta-banner";
 import { Footer } from "@/components/landing/footer";
@@ -26,6 +27,7 @@ export default function LandingPage(): JSX.Element {
         <FeaturesGrid />
         <HowItWorks />
         <Ecosystem />
+        <PricingSection />
         <StatsStrip />
         <CTABanner />
       </main>

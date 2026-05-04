@@ -38,7 +38,12 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
-  // Inbound webhooks for Make and n8n runtimes
+  // Health check — used by Render to determine instance readiness
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok", ts: new Date().toISOString() });
+  });
+
+  // Inbound webhooks for Make, n8n, and Stripe
   app.use("/api/webhooks", webhookRouter);
   // tRPC API
   app.use(

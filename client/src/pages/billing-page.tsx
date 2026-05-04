@@ -10,12 +10,34 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useT } from "@/contexts/LocaleContext";
 import { usePricing } from "@/hooks/use-pricing";
-import { CheckCircle, Zap, Building2, ExternalLink } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { CheckCircle, Zap, Building2, ExternalLink, Loader2 } from "lucide-react";
 import type { PricingPlan } from "@/lib/airtable";
 
 function PlanCard({ plan, isCurrent }: { plan: PricingPlan; isCurrent: boolean }): JSX.Element {
   const color = isCurrent ? "var(--color-brand)" : "var(--color-text-secondary)";
   const isEnterprise = plan.name.toLowerCase().includes("enterprise") || plan.monthlyPriceUsd == null;
+  const [loading, setLoading] = useState(false);
+
+  const checkoutMutation = trpc.billing.createCheckoutSession.useMutation({
+    onSuccess: ({ url }) => {
+      if (url) window.location.href = url;
+    },
+    onError: (err) => {
+      console.error("[Billing] Checkout error:", err.message);
+      setLoading(false);
+    },
+  });
+
+  function handleUpgrade() {
+    if (isCurrent || isEnterprise || !plan.stripePriceIdMonthly) return;
+    setLoading(true);
+    checkoutMutation.mutate({
+      priceId: plan.stripePriceIdMonthly,
+      successUrl: `${window.location.origin}/billing?upgraded=1`,
+      cancelUrl: `${window.location.origin}/billing`,
+    });
+  }
 
   return (
     <div
@@ -85,24 +107,53 @@ function PlanCard({ plan, isCurrent }: { plan: PricingPlan; isCurrent: boolean }
         </ul>
       )}
 
-      <button
-        disabled={isCurrent}
-        style={{
-          width: "100%",
-          padding: "0.55rem",
-          borderRadius: "var(--radius-sm)",
-          border: isCurrent ? "1px solid var(--color-border-subtle)" : "1px solid var(--color-brand)",
-          background: isCurrent ? "transparent" : "rgba(61,255,160,0.1)",
-          color: isCurrent ? "var(--color-text-tertiary)" : "var(--color-brand)",
-          fontFamily: "var(--font-display)",
-          fontWeight: 600,
-          fontSize: "0.8125rem",
-          cursor: isCurrent ? "default" : "pointer",
-          transition: "all 0.15s",
-        }}
-      >
-        {isCurrent ? "Active" : isEnterprise ? "Contact sales" : "Upgrade"}
-      </button>
+      {isEnterprise ? (
+        <a
+          href="mailto:sales@nexusops.io"
+          style={{
+            display: "block",
+            textAlign: "center",
+            width: "100%",
+            padding: "0.55rem",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--color-brand)",
+            background: "rgba(61,255,160,0.1)",
+            color: "var(--color-brand)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 600,
+            fontSize: "0.8125rem",
+            textDecoration: "none",
+            boxSizing: "border-box",
+          }}
+        >
+          Contact sales
+        </a>
+      ) : (
+        <button
+          disabled={isCurrent || loading}
+          onClick={handleUpgrade}
+          style={{
+            width: "100%",
+            padding: "0.55rem",
+            borderRadius: "var(--radius-sm)",
+            border: isCurrent ? "1px solid var(--color-border-subtle)" : "1px solid var(--color-brand)",
+            background: isCurrent ? "transparent" : "rgba(61,255,160,0.1)",
+            color: isCurrent ? "var(--color-text-tertiary)" : "var(--color-brand)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 600,
+            fontSize: "0.8125rem",
+            cursor: isCurrent || loading ? "default" : "pointer",
+            transition: "all 0.15s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.35rem",
+          }}
+        >
+          {loading && <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />}
+          {isCurrent ? "Active" : plan.stripePriceIdMonthly ? "Upgrade" : "Upgrade (configure Stripe)"}
+        </button>
+      )}
     </div>
   );
 }

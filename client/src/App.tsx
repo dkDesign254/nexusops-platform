@@ -16,8 +16,9 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LocaleProvider } from "./contexts/LocaleContext";
 import { AuthGuard } from "./components/auth/auth-guard";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { GaiaBubble, GaiaPanel } from "./components/gaia";
+import { OnboardingTour, isTourDone } from "./components/dashboard/onboarding-tour";
 
 // Public pages
 import LandingPage from "./pages/landing-page";
@@ -189,6 +190,13 @@ function AppShell(): JSX.Element {
   const [gaiaOpen, setGaiaOpen] = useState(false);
   const [location] = useLocation();
   const isPublicRoute = location === "/" || location === "/auth";
+  const isDashboard = location === "/dashboard";
+
+  // Show onboarding tour on first visit to /dashboard
+  const [showTour, setShowTour] = useState(false);
+  useEffect(() => {
+    if (isDashboard && !isTourDone()) setShowTour(true);
+  }, [isDashboard]);
 
   return (
     <TooltipProvider>
@@ -198,6 +206,7 @@ function AppShell(): JSX.Element {
         <>
           <GaiaBubble isOpen={gaiaOpen} onToggle={() => setGaiaOpen((o) => !o)} />
           <GaiaPanel isOpen={gaiaOpen} onClose={() => setGaiaOpen(false)} />
+          {showTour && <OnboardingTour onDone={() => setShowTour(false)} />}
         </>
       )}
     </TooltipProvider>

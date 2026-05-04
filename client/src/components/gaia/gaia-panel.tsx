@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Send, X } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export interface GaiaPanelProps {
   /** Whether the panel is visible. */
@@ -113,8 +114,11 @@ export function GaiaPanel({ isOpen, onClose }: GaiaPanelProps): JSX.Element {
   const [typing, setTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatHistory = useRef<Array<{ role: "user" | "gaia"; text: string }>>([]);
 
   const pageContext = PAGE_CONTEXT[location] ?? DEFAULT_CONTEXT;
+
+  const gaiaMutation = trpc.gaia.chat.useMutation();
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -126,18 +130,39 @@ export function GaiaPanel({ isOpen, onClose }: GaiaPanelProps): JSX.Element {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
   }, [isOpen]);
 
-  function sendMessage(text: string): void {
-    if (!text.trim()) return;
-    const userMsg: Message = { role: "user", text: text.trim(), ts: Date.now() };
+  async function sendMessage(text: string): Promise<void> {
+    if (!text.trim() || typing) return;
+    const trimmed = text.trim();
+    const userMsg: Message = { role: "user", text: trimmed, ts: Date.now() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setTyping(true);
 
-    setTimeout(() => {
-      const response = getGaiaResponse(text);
+    // Keep a rolling history reference for context
+    chatHistory.current = [...chatHistory.current, { role: "user", text: trimmed }].slice(-10);
+
+    try {
+      const result = await gaiaMutation.mutateAsync({
+        message: trimmed,
+        pageContext,
+        history: chatHistory.current.slice(0, -1), // exclude current message (already in `message`)
+      });
+
+      const responseText =
+        result.source === "error" || !result.text
+          ? getGaiaResponse(trimmed) // keyword fallback when LLM unavailable
+          : result.text;
+
+      chatHistory.current = [...chatHistory.current, { role: "gaia", text: responseText }].slice(-10);
       setTyping(false);
-      setMessages((prev) => [...prev, { role: "gaia", text: response, ts: Date.now() }]);
-    }, 800 + Math.random() * 400);
+      setMessages((prev) => [...prev, { role: "gaia", text: responseText, ts: Date.now() }]);
+    } catch {
+      // Network/tRPC error — fall back to keyword matching
+      const fallback = getGaiaResponse(trimmed);
+      chatHistory.current = [...chatHistory.current, { role: "gaia", text: fallback }].slice(-10);
+      setTyping(false);
+      setMessages((prev) => [...prev, { role: "gaia", text: fallback, ts: Date.now() }]);
+    }
   }
 
   return (
@@ -253,7 +278,7 @@ export function GaiaPanel({ isOpen, onClose }: GaiaPanelProps): JSX.Element {
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
-              onClick={() => sendMessage(s)}
+              onClick={() => { void sendMessage(s); }}
               style={{
                 background: "none",
                 border: "1px solid var(--color-border-default)",
@@ -382,7 +407,7 @@ export function GaiaPanel({ isOpen, onClose }: GaiaPanelProps): JSX.Element {
           }}
         >
           <form
-            onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+            onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }}
             style={{ display: "flex", gap: "0.5rem" }}
           >
             <input
