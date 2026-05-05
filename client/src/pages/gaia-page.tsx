@@ -293,7 +293,7 @@ export default function GaiaPage(): JSX.Element {
       const reply: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: data.reply,
+        content: data.source === "error" ? "⚠️ GAIA is currently unavailable — the LLM service is not configured. Please contact your admin." : data.text,
         timestamp: new Date(),
       };
       setSessionMessages((prev) => ({

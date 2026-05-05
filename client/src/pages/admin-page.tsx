@@ -138,7 +138,7 @@ export default function AdminPage(): JSX.Element {
 
   const syncMutation = trpc.sync.runAirtableSync.useMutation({
     onSuccess: (res) => {
-      toast.success(`Sync complete — ${res.imported ?? 0} imported, ${res.updated ?? 0} updated`);
+      toast.success(`Sync complete — ${res.totalSynced ?? 0} records synced`);
     },
     onError: (e) => toast.error(`Sync failed: ${e.message}`),
   });
@@ -188,7 +188,7 @@ export default function AdminPage(): JSX.Element {
       icon: <GitBranch size={18} />,
       status: liveSvcs ? toLevel(liveSvcs.airtable) : "unknown",
       detail: syncStatus.data
-        ? `Last sync: ${new Date(syncStatus.data.ts ?? "").toLocaleString()}`
+        ? `Last sync: ${new Date(syncStatus.data.completedAt ?? "").toLocaleString()}`
         : liveSvcs?.airtable === "ok" ? "Token configured — no sync yet" : "AIRTABLE_TOKEN not set",
     },
     {
