@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LANGUAGES, REGIONS, useLocale, useT, type LanguageCode, type RegionCode } from "@/contexts/LocaleContext";
 import { supabase } from "@/lib/supabase";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 export interface TopBarProps {
   title?: string;
@@ -36,6 +37,7 @@ export function TopBar({ title = "Dashboard", failedCount = 0, onMobileMenuOpen 
   const langRef = useRef<HTMLDivElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLDivElement>(null);
+  const { permission: pushPermission, requestPermission: requestPush } = usePushNotifications();
 
   // One-time fetch for notifications — no realtime channel to avoid collision
   // with the page-level useWorkflows subscription (same channel name would crash)
@@ -319,6 +321,27 @@ export function TopBar({ title = "Dashboard", failedCount = 0, onMobileMenuOpen 
                   </button>
                 </div>
               </>
+            )}
+            {/* Browser push-notification opt-in */}
+            {pushPermission === "default" && (
+              <div style={{ borderTop: "1px solid var(--color-border-subtle)", padding: "0.6rem var(--space-4)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)" }}>
+                  Get desktop alerts for failures
+                </span>
+                <button
+                  onClick={() => { requestPush(); }}
+                  style={{ ...iconBtnStyle, fontSize: "0.75rem", padding: "0.2rem 0.55rem", color: "var(--color-brand)", borderColor: "var(--color-brand)" }}
+                >
+                  Enable
+                </button>
+              </div>
+            )}
+            {pushPermission === "granted" && (
+              <div style={{ borderTop: "1px solid var(--color-border-subtle)", padding: "0.5rem var(--space-4)" }}>
+                <span style={{ fontSize: "0.72rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)" }}>
+                  ✓ Desktop notifications active
+                </span>
+              </div>
             )}
           </div>
         )}
