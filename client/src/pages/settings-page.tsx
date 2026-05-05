@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { Copy, Check, Eye, EyeOff, RefreshCw } from "lucide-react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -105,6 +105,7 @@ function CopyableRow({ label, value, sensitive = false }: { label: string; value
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage(): JSX.Element {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { user } = useAuth();
 
   // Derive webhook URL from current origin
@@ -136,8 +137,9 @@ export default function SettingsPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Settings" />
+        <TopBar title="Settings" onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
 

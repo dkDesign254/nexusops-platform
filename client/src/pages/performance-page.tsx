@@ -5,6 +5,7 @@
  * Shows per-campaign metrics (CTR, ROAS, impressions, clicks) as cards
  * plus CTR and ROAS trend bar charts at the top.
  */
+import { useState } from "react";
 import {
   BarChart,
   Bar,
@@ -15,7 +16,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { usePerformanceData } from "@/hooks/use-performance-data";
 
@@ -98,6 +99,7 @@ function ROASChart({ rows }: { rows: Array<{ campaign_name: string; roas: number
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PerformancePage(): JSX.Element {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { data, loading } = usePerformanceData();
 
   const filtered = data.filter(
@@ -107,8 +109,9 @@ export default function PerformancePage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Campaign Data" />
+        <TopBar title="Campaign Data" onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
 

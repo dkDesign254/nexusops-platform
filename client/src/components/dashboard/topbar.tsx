@@ -4,7 +4,7 @@
  * Dashboard top navigation bar. Shows page title, notification bell,
  * theme toggle, language picker, region picker, and user avatar dropdown.
  */
-import { Bell, ChevronDown, LogOut, Moon, Settings, Sun, User } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu, Moon, Settings, Sun, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -15,9 +15,10 @@ import { supabase } from "@/lib/supabase";
 export interface TopBarProps {
   title?: string;
   failedCount?: number;
+  onMobileMenuOpen?: () => void;
 }
 
-export function TopBar({ title = "Dashboard", failedCount = 0 }: TopBarProps): JSX.Element {
+export function TopBar({ title = "Dashboard", failedCount = 0, onMobileMenuOpen }: TopBarProps): JSX.Element {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, region, setLanguage, setRegion } = useLocale();
@@ -143,6 +144,18 @@ export function TopBar({ title = "Dashboard", failedCount = 0 }: TopBarProps): J
         flexShrink: 0,
       }}
     >
+      {/* Mobile hamburger — only visible on small screens */}
+      {onMobileMenuOpen && (
+        <button
+          onClick={onMobileMenuOpen}
+          className="md:hidden"
+          style={{ ...iconBtnStyle, marginRight: "var(--space-2)" }}
+          aria-label="Open navigation menu"
+        >
+          <Menu size={18} />
+        </button>
+      )}
+
       {/* Page title */}
       <p
         style={{

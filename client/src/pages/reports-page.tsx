@@ -6,7 +6,7 @@
  * expand/collapse detail, search filter, and PDF-style export.
  */
 import { useState, useMemo, useCallback } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useFinalReports } from "@/hooks/use-final-reports";
 import { useAuth } from "@/hooks/use-auth";
@@ -282,6 +282,7 @@ export default function ReportsPage(): JSX.Element {
   const { data, loading, approveReport, refetch } = useFinalReports();
   const { user } = useAuth();
   const T = useT();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ReportStatus>("all");
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
@@ -321,8 +322,9 @@ export default function ReportsPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title={T("page.finalReports")} />
+        <TopBar title={T("page.finalReports")} onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
 

@@ -8,7 +8,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -278,6 +278,7 @@ Rules:
 export default function GaiaPage(): JSX.Element {
   const [, setLocation] = useLocation();
 
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState("default");
   const [sessionMessages, setSessionMessages] = useState<Record<string, Message[]>>({ default: [] });
@@ -366,8 +367,9 @@ export default function GaiaPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <TopBar title="GAIA AI" />
+        <TopBar title="GAIA AI" onMobileMenuOpen={() => setMobileNavOpen(true)} />
 
         <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
           {/* Session history */}

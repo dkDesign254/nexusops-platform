@@ -7,7 +7,7 @@
  * All credentials are stored server-side only.
  */
 import { useState } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -261,6 +261,7 @@ function IntegrationCard({
 
 export default function IntegrationsPage(): JSX.Element {
   const [localStatuses, setLocalStatuses] = useState<Record<string, Status>>({});
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
 
   const healthQuery = trpc.system.serviceStatus.useQuery(undefined, { refetchInterval: 30_000 });
@@ -295,8 +296,9 @@ export default function IntegrationsPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Integrations" />
+        <TopBar title="Integrations" onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
 

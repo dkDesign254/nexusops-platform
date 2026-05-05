@@ -8,7 +8,7 @@
  * the workflow into NexusOps governance.
  */
 import { useState, useCallback } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -131,6 +131,7 @@ function uid(): string {
 }
 
 export default function WorkflowBuilderPage(): JSX.Element {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [workflowName, setWorkflowName] = useState("");
   const [steps, setSteps] = useState<WorkflowStep[]>([]);
@@ -234,8 +235,9 @@ export default function WorkflowBuilderPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Workflow Builder" />
+        <TopBar title="Workflow Builder" onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
 

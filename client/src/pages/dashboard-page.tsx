@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { MetricsRow } from "@/components/dashboard/metrics-row";
 import { GovernanceHealth } from "@/components/dashboard/governance-health";
@@ -27,6 +27,7 @@ import type { ExecutionDot } from "@/components/dashboard/governance-health";
 
 export default function DashboardPage(): JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { metrics, quickStats, loading: metricsLoading } = useDashboardMetrics();
   const { data: workflows, loading: wfLoading } = useWorkflows();
   const T = useT();
@@ -55,14 +56,17 @@ export default function DashboardPage(): JSX.Element {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
-      {/* Sidebar */}
+      {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <Sidebar collapsed={sidebarCollapsed} onCollapse={setSidebarCollapsed} />
       </div>
 
+      {/* Mobile sidebar overlay */}
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+
       {/* Main content */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <TopBar title={T("nav.dashboard")} failedCount={metrics.failed} />
+        <TopBar title={T("nav.dashboard")} failedCount={metrics.failed} onMobileMenuOpen={() => setMobileNavOpen(true)} />
 
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>

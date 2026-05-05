@@ -12,7 +12,7 @@ import {
   Shield, CheckCircle, Clock, GitBranch, ChevronDown, ChevronUp,
   Loader2, X,
 } from "lucide-react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { toast } from "sonner";
 
@@ -452,6 +452,7 @@ function CreateAgentModal({ onClose, onCreate }: {
 
 export default function AgentsPage(): JSX.Element {
   const [agents, setAgents] = useState<AgentConfig[]>(DEMO_AGENTS);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
   const activeCount = agents.filter((a) => a.status === "active").length;
@@ -460,8 +461,9 @@ export default function AgentsPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Agents" />
+        <TopBar title="Agents" onMobileMenuOpen={() => setMobileNavOpen(true)} />
 
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
