@@ -18,24 +18,6 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-charts": ["recharts"],
-          "vendor-trpc": ["@trpc/client", "@trpc/react-query", "@tanstack/react-query"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-ui": [
-            "@radix-ui/react-tooltip",
-            "@radix-ui/react-slot",
-            "class-variance-authority",
-            "clsx",
-            "tailwind-merge",
-          ],
-        },
-      },
-    },
   },
   server: {
     host: true,
