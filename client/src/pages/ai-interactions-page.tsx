@@ -56,8 +56,10 @@ function GaiaExplainPanel({ prompt, response, onClose }: { prompt: string; respo
     setLoading(true);
     try {
       const result = await gaiaMutation.mutateAsync({
-        message: `Analyse this AI interaction for governance concerns. Prompt: "${prompt.slice(0, 400)}" Response: "${response.slice(0, 400)}". Identify: 1) potential bias or errors, 2) compliance risks, 3) whether human review is recommended. Keep your answer concise and structured.`,
-        pageContext: "ai-interactions",
+        messages: [
+          { role: "system" as const, content: "You are a governance analyst. Analyse AI interactions for compliance risks. Be concise and structured." },
+          { role: "user" as const, content: `Analyse this AI interaction for governance concerns. Prompt: "${prompt.slice(0, 400)}" Response: "${response.slice(0, 400)}". Identify: 1) potential bias or errors, 2) compliance risks, 3) whether human review is recommended.` },
+        ],
       });
       setExplanation(result.text || "Unable to generate explanation.");
     } catch {

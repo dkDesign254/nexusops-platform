@@ -147,8 +147,16 @@ export default function WorkflowBuilderPage(): JSX.Element {
 
     try {
       const result = await gaiaMutation.mutateAsync({
-        message: `Parse the following workflow description into a JSON array of steps. Each step must have: name (string), eventType (string, one of: intake, routing, execution, ai_call, report, notification, completion), runtime (one of: make, n8n, custom, manual), and description (string, 1 sentence). Also extract a workflowName (string). Respond ONLY with valid JSON in this format: {"workflowName":"...","steps":[{"name":"...","eventType":"...","runtime":"...","description":"..."}]}.\n\nWorkflow description: "${prompt.trim()}"`,
-        pageContext: "workflow-builder",
+        messages: [
+          {
+            role: "system" as const,
+            content: "You are a workflow architect. Parse workflow descriptions into structured JSON. Respond ONLY with valid JSON — no markdown, no explanation.",
+          },
+          {
+            role: "user" as const,
+            content: `Parse the following workflow description into a JSON array of steps. Each step must have: name (string), eventType (string, one of: intake, routing, execution, ai_call, report, notification, completion), runtime (one of: make, n8n, custom, manual), and description (string, 1 sentence). Also extract a workflowName (string). Respond ONLY with valid JSON in this format: {"workflowName":"...","steps":[{"name":"...","eventType":"...","runtime":"...","description":"..."}]}.\n\nWorkflow description: "${prompt.trim()}"`,
+          },
+        ],
       });
 
       // Try to parse the JSON from the response
