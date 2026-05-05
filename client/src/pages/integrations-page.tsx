@@ -1,405 +1,351 @@
 /**
- * NexusOps — IntegrationsPage
+ * NexusOps — Integration Hub
+ * Route: /integrations (protected)
  *
- * Displays the Integration Registry from Airtable. Integrations are grouped
- * by category and filterable by status (All / Live / Beta / Coming Soon).
- * Each card shows name, category badge, description, status, capability icons,
- * and a connect or notify-me button.
- *
- * Route: /integrations (protected — requires auth)
+ * Phase 6: Beginner-friendly connect buttons for each integration.
+ * Shows status, guidance, test connection, and disconnect.
+ * All credentials are stored server-side only.
  */
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
-import { useIntegrations } from "@/hooks/use-integrations";
-import { useT } from "@/contexts/LocaleContext";
-import { Webhook, Lock, Zap, ExternalLink } from "lucide-react";
-import type { Integration } from "@/lib/airtable";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import {
+  AlertTriangle, CheckCircle2, ChevronDown, ChevronUp,
+  ExternalLink, Loader2, RefreshCw, Settings, XCircle, Zap,
+} from "lucide-react";
 
-// ─── Status config ────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  Live:          { bg: "rgba(61,255,160,0.1)",  text: "#3dffa0",  border: "rgba(61,255,160,0.25)" },
-  Beta:          { bg: "rgba(255,179,71,0.1)",  text: "#ffb347",  border: "rgba(255,179,71,0.25)" },
-  "Coming Soon": { bg: "rgba(77,82,101,0.2)",   text: "#4d5265",  border: "rgba(77,82,101,0.3)" },
-};
+type Status = "connected" | "unconfigured" | "degraded" | "checking";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "Automation Platforms": "#ff6b35",
-  "Agent Builders":       "#ea4e9d",
-  "LLM Frameworks":       "#0ea472",
-  "Notifications":        "#a78bfa",
-  "Data Sources":         "#38bdf8",
-};
-
-function categoryColor(cat: string): string {
-  return CATEGORY_COLORS[cat] ?? "#4d5265";
+interface Integration {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  setupSteps: string[];
+  docsUrl: string;
+  category: string;
+  required: boolean;
+  envKey?: string;
 }
 
-// ─── Integration card ─────────────────────────────────────────────────────────
+// ─── Integration Definitions ──────────────────────────────────────────────────
 
-interface IntegrationCardProps {
+const INTEGRATIONS: Integration[] = [
+  {
+    id: "supabase",
+    name: "Supabase",
+    tagline: "Primary database and user auth",
+    description: "NexusOps stores all workflows, execution logs, AI logs, reports, and users in Supabase. This is the core database — the platform cannot function without it.",
+    setupSteps: [
+      "Create a project at supabase.com",
+      "Copy your Project URL and Service Role Key from Settings → API",
+      "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your Render environment",
+      "Run the SQL migrations in supabase/migrations/ via the Supabase SQL editor",
+    ],
+    docsUrl: "https://supabase.com/docs",
+    category: "Core",
+    required: true,
+    envKey: "supabase",
+  },
+  {
+    id: "airtable",
+    name: "Airtable",
+    tagline: "External governance audit source",
+    description: "Airtable acts as a runtime-independent audit layer. Workflow records, logs, and reports can be synced to Airtable so governance data exists outside NexusOps itself — proving auditability.",
+    setupSteps: [
+      "Log in to airtable.com and open your base",
+      "Create tables: Workflows, Execution Logs, AI Interaction Logs, Final Reports, Performance Data",
+      "Generate a Personal Access Token at airtable.com/create/tokens",
+      "Set AIRTABLE_TOKEN and AIRTABLE_BASE_ID in your environment",
+      "Click Sync Now in the Admin page to pull data into Supabase",
+    ],
+    docsUrl: "https://airtable.com/developers/web/api",
+    category: "Governance",
+    required: false,
+    envKey: "airtable",
+  },
+  {
+    id: "make",
+    name: "Make",
+    tagline: "No-code workflow automation runtime",
+    description: "Make (formerly Integromat) runs your automation scenarios in the cloud. NexusOps dispatches workflow triggers to Make via webhook. You do not need to understand Make's module wiring — NexusOps generates the payload for you.",
+    setupSteps: [
+      "Create an account at make.com",
+      "Create a new scenario with a Webhook trigger module",
+      "Copy the webhook URL from Make and paste it in the Trigger Run dialog",
+      "Optionally set your Make API key as MAKE_API_KEY in your environment",
+      "Set MAKE_WEBHOOK_SECRET to validate inbound webhooks",
+    ],
+    docsUrl: "https://www.make.com/en/help/tools/webhooks",
+    category: "Runtime",
+    required: false,
+    envKey: "make",
+  },
+  {
+    id: "n8n",
+    name: "n8n",
+    tagline: "Open-source workflow automation runtime",
+    description: "n8n is a self-hostable workflow automation tool. NexusOps sends workflow triggers to n8n via webhook. Great for teams that want full control over their automation infrastructure.",
+    setupSteps: [
+      "Set up n8n at n8n.io (cloud or self-hosted)",
+      "Create a workflow with a Webhook trigger node",
+      "Copy the webhook URL from n8n and use it in the Trigger Run dialog",
+      "Set N8N_WEBHOOK_SECRET for secure webhook validation",
+    ],
+    docsUrl: "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/",
+    category: "Runtime",
+    required: false,
+    envKey: "n8n",
+  },
+  {
+    id: "openai",
+    name: "OpenAI / LLM",
+    tagline: "AI intelligence layer for GAIA and reports",
+    description: "NexusOps uses an LLM to generate marketing performance reports, power GAIA chat, and analyse workflows. Supports OpenAI GPT-4o-mini and Claude (Anthropic).",
+    setupSteps: [
+      "Get an API key from platform.openai.com or console.anthropic.com",
+      "Set ANTHROPIC_API_KEY in your environment",
+      "NexusOps will use the LLM automatically when a workflow triggers AI report generation",
+    ],
+    docsUrl: "https://platform.openai.com/docs",
+    category: "AI",
+    required: false,
+    envKey: "llm",
+  },
+  {
+    id: "stripe",
+    name: "Stripe",
+    tagline: "Payments and subscription billing",
+    description: "Stripe handles NexusOps subscription payments. Required only if you enable paid plans. In demo or academic mode, billing can remain unconfigured — all features are accessible regardless.",
+    setupSteps: [
+      "Create an account at stripe.com",
+      "Copy your Secret Key from the Stripe dashboard",
+      "Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in your environment",
+      "Set up a webhook in Stripe pointing to your-app-url/api/webhooks/stripe",
+    ],
+    docsUrl: "https://stripe.com/docs",
+    category: "Billing",
+    required: false,
+    envKey: "stripe",
+  },
+  {
+    id: "gmail",
+    name: "Gmail",
+    tagline: "Email delivery for reports and alerts",
+    description: "Send weekly reports and governance alerts directly to your inbox. In the meantime, use Make or n8n to send emails as part of a workflow.",
+    setupSteps: [
+      "Coming soon — not yet implemented",
+      "In the meantime, use Make or n8n to send emails as part of a workflow",
+    ],
+    docsUrl: "https://developers.google.com/gmail/api",
+    category: "Output",
+    required: false,
+  },
+  {
+    id: "slack",
+    name: "Slack",
+    tagline: "Post alerts and report summaries to Slack",
+    description: "Receive workflow completion notifications, anomaly alerts, and governance score updates directly in your Slack workspace.",
+    setupSteps: [
+      "Coming soon — not yet implemented",
+      "In the meantime, use Make or n8n to post Slack messages as part of a workflow",
+    ],
+    docsUrl: "https://api.slack.com/messaging/webhooks",
+    category: "Output",
+    required: false,
+  },
+];
+
+// ─── Status helpers ───────────────────────────────────────────────────────────
+
+function statusColor(s: Status) {
+  return s === "connected" ? "#3dffa0" : s === "degraded" ? "#facc15" : s === "checking" ? "#60a5fa" : "var(--color-text-tertiary)";
+}
+
+function StatusBadge({ status }: { status: Status }) {
+  const Icon = status === "connected" ? CheckCircle2 : status === "degraded" ? AlertTriangle : status === "checking" ? Loader2 : XCircle;
+  const label = status === "checking" ? "Checking…" : status;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.6875rem", fontWeight: 600, fontFamily: "var(--font-display)", textTransform: "capitalize", color: statusColor(status), background: `${statusColor(status)}18`, padding: "0.2rem 0.6rem", borderRadius: "var(--radius-full)" }}>
+      <Icon size={11} style={status === "checking" ? { animation: "spin 1s linear infinite" } : undefined} />
+      {label}
+    </span>
+  );
+}
+
+// ─── Integration Card ─────────────────────────────────────────────────────────
+
+function IntegrationCard({
+  integration,
+  status,
+  onTest,
+}: {
   integration: Integration;
-}
+  status: Status;
+  onTest: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
 
-function IntegrationCard({ integration: it }: IntegrationCardProps): JSX.Element {
-  const [notified, setNotified] = useState(false);
-  const sc = STATUS_COLORS[it.status] ?? STATUS_COLORS["Coming Soon"];
-  const isLive = it.status === "Live" || it.status === "Beta";
-  const catColor = categoryColor(it.category);
+  const categoryColor: Record<string, string> = {
+    Core: "#3dffa0", Governance: "#c084fc", Runtime: "#60a5fa",
+    AI: "#facc15", Billing: "#fb923c", Output: "#34d399",
+  };
+  const catColor = categoryColor[integration.category] ?? "var(--color-text-tertiary)";
 
   return (
-    <div
-      style={{
-        background: "var(--color-bg-elevated)",
-        border: "1px solid var(--color-border-subtle)",
-        borderRadius: 12,
-        padding: "1.25rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.75rem",
-        opacity: it.status === "Coming Soon" ? 0.7 : 1,
-        transition: "border-color 0.15s, transform 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = isLive ? catColor + "60" : "var(--color-border-default)";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--color-border-subtle)";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-      }}
-    >
-      {/* Header row */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem" }}>
-        {/* Icon */}
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: `${catColor}20`,
-            border: `1px solid ${catColor}40`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            fontFamily: "var(--font-display)",
-            fontWeight: 700,
-            fontSize: "1rem",
-            color: catColor,
-          }}
-        >
-          {it.name.charAt(0).toUpperCase()}
+    <div style={{
+      background: "var(--color-bg-surface)",
+      border: `1px solid ${status === "connected" ? "rgba(61,255,160,0.2)" : "var(--color-border-subtle)"}`,
+      borderRadius: "var(--radius-xl)",
+      overflow: "hidden",
+      transition: "border-color 0.15s",
+    }}>
+      <div style={{ padding: "var(--space-5)", display: "flex", alignItems: "flex-start", gap: "var(--space-4)" }}>
+        <div style={{ width: 44, height: 44, borderRadius: "var(--radius-md)", flexShrink: 0, background: `${catColor}12`, border: `1px solid ${catColor}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Zap size={20} style={{ color: catColor }} />
         </div>
-
-        {/* Status badge */}
-        <span
-          style={{
-            background: sc.bg,
-            color: sc.text,
-            border: `1px solid ${sc.border}`,
-            borderRadius: "99px",
-            padding: "0.2rem 0.55rem",
-            fontSize: "0.6875rem",
-            fontFamily: "var(--font-display)",
-            fontWeight: 600,
-            flexShrink: 0,
-          }}
-        >
-          {it.status}
-        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "0.25rem" }}>
+            <p style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem", color: "var(--color-text-primary)", margin: 0 }}>{integration.name}</p>
+            <span style={{ fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: catColor, background: `${catColor}15`, padding: "0.15rem 0.5rem", borderRadius: "var(--radius-full)" }}>{integration.category}</span>
+            {integration.required && <span style={{ fontSize: "0.625rem", fontWeight: 600, textTransform: "uppercase", color: "#f87171", background: "rgba(248,113,113,0.1)", padding: "0.15rem 0.5rem", borderRadius: "var(--radius-full)" }}>Required</span>}
+          </div>
+          <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", margin: 0 }}>{integration.tagline}</p>
+        </div>
+        <StatusBadge status={status} />
       </div>
 
-      {/* Name + category */}
-      <div>
-        <p style={{ margin: "0 0 0.2rem", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.9375rem", color: "var(--color-text-primary)" }}>
-          {it.name}
-        </p>
-        <span
-          style={{
-            fontSize: "0.6875rem",
-            fontFamily: "var(--font-display)",
-            color: catColor,
-            background: `${catColor}15`,
-            borderRadius: "99px",
-            padding: "0.15rem 0.5rem",
-          }}
-        >
-          {it.category}
-        </span>
+      <div style={{ padding: "0 var(--space-5) var(--space-4)" }}>
+        <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", lineHeight: 1.6, margin: 0 }}>{integration.description}</p>
       </div>
 
-      {/* Description */}
-      <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--color-text-secondary)", lineHeight: 1.5, flex: 1 }}>
-        {it.description || "Connect your workflows to NexusOps governance."}
-      </p>
-
-      {/* Capability icons */}
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        {it.webhookSupported && (
-          <span title="Webhook supported" style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.6875rem", color: "var(--color-text-tertiary)" }}>
-            <Webhook size={12} /> Webhook
-          </span>
-        )}
-        {it.oauthSupported && (
-          <span title="OAuth supported" style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.6875rem", color: "var(--color-text-tertiary)" }}>
-            <Lock size={12} /> OAuth
-          </span>
-        )}
-        {it.autoBuildSupported && (
-          <span title="Auto-build supported" style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.6875rem", color: "var(--color-text-tertiary)" }}>
-            <Zap size={12} /> Auto-build
-          </span>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: "flex", gap: "0.5rem", marginTop: "auto" }}>
-        {isLive ? (
+      <div style={{ padding: "0 var(--space-5) var(--space-4)", display: "flex", gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
+        {integration.envKey && (
           <button
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              background: "var(--color-brand)",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              color: "#fff",
-              fontFamily: "var(--font-display)",
-              fontSize: "0.8125rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-            onClick={() => alert(`Integration wizard for ${it.name} coming soon!`)}
+            onClick={() => onTest(integration.id)}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.4rem 0.875rem", background: "rgba(61,255,160,0.08)", border: "1px solid rgba(61,255,160,0.25)", borderRadius: "var(--radius-md)", color: "var(--color-brand)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
           >
-            Connect
-          </button>
-        ) : (
-          <button
-            onClick={() => setNotified(true)}
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              background: notified ? "rgba(14,164,114,0.1)" : "none",
-              border: "1px solid var(--color-border-default)",
-              borderRadius: "var(--radius-md)",
-              color: notified ? "var(--color-brand)" : "var(--color-text-secondary)",
-              fontFamily: "var(--font-display)",
-              fontSize: "0.8125rem",
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            {notified ? "✓ Notified" : "Notify me"}
+            <RefreshCw size={12} /> Test connection
           </button>
         )}
-
-        {it.docsUrl && (
-          <a
-            href={it.docsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="View docs"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 36,
-              height: 36,
-              border: "1px solid var(--color-border-subtle)",
-              borderRadius: "var(--radius-md)",
-              color: "var(--color-text-tertiary)",
-              textDecoration: "none",
-              flexShrink: 0,
-              transition: "border-color 0.15s, color 0.15s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-border-default)"; e.currentTarget.style.color = "var(--color-text-secondary)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border-subtle)"; e.currentTarget.style.color = "var(--color-text-tertiary)"; }}
-          >
-            <ExternalLink size={13} />
-          </a>
-        )}
+        <a href={integration.docsUrl} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.4rem 0.875rem", background: "transparent", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-md)", color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
+          <ExternalLink size={12} /> Docs
+        </a>
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.4rem 0.875rem", background: "transparent", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-md)", color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+        >
+          <Settings size={12} /> Setup guide {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
       </div>
+
+      {expanded && (
+        <div style={{ margin: "0 var(--space-5) var(--space-5)", padding: "var(--space-4)", background: "var(--color-bg-base)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-subtle)" }}>
+          <p style={{ fontSize: "0.75rem", fontWeight: 600, fontFamily: "var(--font-display)", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "var(--space-3)" }}>Setup steps</p>
+          <ol style={{ margin: 0, paddingLeft: "1.25rem", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+            {integration.setupSteps.map((step, i) => (
+              <li key={i} style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>{step}</li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Status filter tabs ───────────────────────────────────────────────────────
-
-type StatusFilter = "All" | "Live" | "Beta" | "Coming Soon";
-const FILTERS: StatusFilter[] = ["All", "Live", "Beta", "Coming Soon"];
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-/**
- * Integrations page — lists all integrations from Airtable, filterable by status.
- */
 export default function IntegrationsPage(): JSX.Element {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [filter, setFilter] = useState<StatusFilter>("All");
-  const [, setLocation] = useLocation();
-  const T = useT();
-  const { integrations, loading, error } = useIntegrations();
+  const [localStatuses, setLocalStatuses] = useState<Record<string, Status>>({});
+  const [activeCategory, setActiveCategory] = useState("All");
 
-  const filtered = filter === "All" ? integrations : integrations.filter((i) => i.status === filter);
+  const healthQuery = trpc.system.serviceStatus.useQuery(undefined, { refetchInterval: 30_000 });
+  const healthSvcs = healthQuery.data?.services as Record<string, string> | undefined;
 
-  // Group by category
-  const grouped: Record<string, Integration[]> = {};
-  for (const it of filtered) {
-    if (!grouped[it.category]) grouped[it.category] = [];
-    grouped[it.category].push(it);
-  }
+  const mergedStatuses: Record<string, Status> = {
+    supabase: (healthSvcs?.supabase === "ok" ? "connected" : healthSvcs?.supabase === "degraded" ? "degraded" : "unconfigured") as Status,
+    airtable: (healthSvcs?.airtable === "ok" ? "connected" : "unconfigured") as Status,
+    make: (healthSvcs?.make === "ok" ? "connected" : "unconfigured") as Status,
+    n8n: (healthSvcs?.n8n === "ok" ? "connected" : "unconfigured") as Status,
+    openai: (healthSvcs?.llm === "ok" ? "connected" : "unconfigured") as Status,
+    stripe: (healthSvcs?.stripe === "ok" ? "connected" : "unconfigured") as Status,
+    ...localStatuses,
+  };
+
+  const testConnection = async (id: string) => {
+    setLocalStatuses((s) => ({ ...s, [id]: "checking" }));
+    await healthQuery.refetch();
+    const fresh = healthQuery.data?.services as Record<string, string> | undefined;
+    const envMap: Record<string, string> = { supabase: "supabase", airtable: "airtable", make: "make", n8n: "n8n", openai: "llm", stripe: "stripe" };
+    const key = envMap[id];
+    const resolved: Status = fresh?.[key] === "ok" ? "connected" : fresh?.[key] === "degraded" ? "degraded" : "unconfigured";
+    setLocalStatuses((s) => ({ ...s, [id]: resolved }));
+    toast.success(`${INTEGRATIONS.find(i => i.id === id)?.name ?? id} — ${resolved}`);
+  };
+
+  const categories = ["All", ...Array.from(new Set(INTEGRATIONS.map((i) => i.category)))];
+  const filtered = activeCategory === "All" ? INTEGRATIONS : INTEGRATIONS.filter((i) => i.category === activeCategory);
+  const connected = Object.values(mergedStatuses).filter((s) => s === "connected").length;
+  const total = INTEGRATIONS.filter((i) => i.envKey).length;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
-      <div className="hidden md:flex">
-        <Sidebar collapsed={sidebarCollapsed} onCollapse={setSidebarCollapsed} />
-      </div>
-
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <TopBar title={T("nav.integrations")} />
-
+      <div className="hidden md:flex"><Sidebar /></div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <TopBar title="Integrations" />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
 
-            {/* Hero */}
-            <div style={{ marginBottom: "var(--space-6)" }}>
-              <h1 style={{ margin: "0 0 0.25rem", fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 700, color: "var(--color-text-primary)", letterSpacing: "-0.02em" }}>
-                Connect your runtime
-              </h1>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
-                Link Make, n8n, LangChain, or any webhook-based tool to bring all your AI workflows under NexusOps governance.
-              </p>
+            {/* Header */}
+            <div style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-xl)", padding: "var(--space-6)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "var(--space-4)" }}>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.125rem", color: "var(--color-text-primary)", margin: "0 0 0.25rem" }}>Integration Hub</h2>
+                <p style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)", margin: 0 }}>
+                  Connect your tools using simple buttons — no JSON or API knowledge required.
+                </p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: "1.5rem", fontWeight: 700, fontFamily: "var(--font-display)", color: connected > 0 ? "var(--color-brand)" : "var(--color-text-tertiary)", margin: 0 }}>{connected} / {total}</p>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Connected</p>
+                </div>
+                <button onClick={() => healthQuery.refetch()} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", background: "transparent", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-md)", color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer" }}>
+                  <RefreshCw size={14} style={healthQuery.isFetching ? { animation: "spin 1s linear infinite" } : undefined} />
+                  Refresh all
+                </button>
+              </div>
             </div>
 
-            {/* Filter tabs */}
-            <div style={{ display: "flex", gap: "0.375rem", marginBottom: "var(--space-6)", flexWrap: "wrap" }}>
-              {FILTERS.map((f) => {
-                const active = filter === f;
-                return (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    style={{
-                      padding: "0.4rem 0.875rem",
-                      borderRadius: "var(--radius-md)",
-                      border: active ? "1px solid var(--color-brand)" : "1px solid var(--color-border-subtle)",
-                      background: active ? "rgba(14,164,114,0.1)" : "none",
-                      color: active ? "var(--color-brand)" : "var(--color-text-secondary)",
-                      fontFamily: "var(--font-display)",
-                      fontSize: "0.8125rem",
-                      fontWeight: active ? 600 : 400,
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {f}
-                    {f !== "All" && (
-                      <span style={{ marginLeft: "0.35rem", color: "var(--color-text-tertiary)" }}>
-                        ({integrations.filter((i) => i.status === f).length})
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+            {/* Category filter */}
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              {categories.map((cat) => (
+                <button key={cat} onClick={() => setActiveCategory(cat)} style={{ padding: "0.35rem 0.875rem", borderRadius: "var(--radius-full)", border: `1px solid ${activeCategory === cat ? "var(--color-brand)" : "var(--color-border-subtle)"}`, background: activeCategory === cat ? "rgba(61,255,160,0.08)" : "transparent", color: activeCategory === cat ? "var(--color-brand)" : "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}>
+                  {cat}
+                </button>
+              ))}
             </div>
 
-            {/* Error */}
-            {error && (
-              <div style={{ padding: "1rem", background: "rgba(255,95,95,0.1)", border: "1px solid rgba(255,95,95,0.25)", borderRadius: 8, marginBottom: "var(--space-4)", color: "#ff5f5f", fontSize: "0.8125rem", fontFamily: "var(--font-display)" }}>
-                {error} — make sure VITE_AIRTABLE_TOKEN is set.
-              </div>
-            )}
+            {/* Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(480px, 1fr))", gap: "var(--space-4)" }}>
+              {filtered.map((integration) => (
+                <IntegrationCard
+                  key={integration.id}
+                  integration={integration}
+                  status={localStatuses[integration.id] ?? mergedStatuses[integration.id] ?? "unconfigured"}
+                  onTest={testConnection}
+                />
+              ))}
+            </div>
 
-            {/* Loading skeleton */}
-            {loading && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      height: 240,
-                      borderRadius: 12,
-                      background: "var(--color-bg-elevated)",
-                      border: "1px solid var(--color-border-subtle)",
-                      animation: "skeleton-pulse 1.5s ease-in-out infinite",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* No results */}
-            {!loading && filtered.length === 0 && !error && (
-              <div style={{ textAlign: "center", padding: "4rem 0", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)" }}>
-                <p style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🔌</p>
-                <p style={{ margin: 0, fontSize: "0.9375rem" }}>No integrations found for "{filter}"</p>
-                <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem" }}>
-                  Make sure VITE_AIRTABLE_TOKEN is configured and the Integration Registry table has records.
-                </p>
-              </div>
-            )}
-
-            {/* Grid by category */}
-            {!loading && Object.entries(grouped).map(([category, items]) => (
-              <div key={category} style={{ marginBottom: "var(--space-8)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "var(--space-4)" }}>
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: categoryColor(category),
-                      flexShrink: 0,
-                    }}
-                  />
-                  <p style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.8125rem", color: "var(--color-text-primary)", letterSpacing: "0.01em" }}>
-                    {category}
-                  </p>
-                  <span style={{ fontSize: "0.75rem", color: "var(--color-text-tertiary)" }}>
-                    {items.length}
-                  </span>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
-                  {items.map((it) => (
-                    <IntegrationCard key={it.recordId} integration={it} />
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* Fallback: no Airtable data — show static cards */}
-            {!loading && integrations.length === 0 && !error && (
-              <div style={{ textAlign: "center", padding: "3rem 0" }}>
-                <p style={{ color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", fontSize: "0.875rem" }}>
-                  Add integrations to the Integration Registry in Airtable to see them here.
-                </p>
-                <p style={{ color: "var(--color-text-tertiary)", fontSize: "0.75rem", marginTop: "0.5rem" }}>
-                  Make sure VITE_AIRTABLE_TOKEN is set and the token has read access to base app4DDa3zvaGspOhz.
-                </p>
-              </div>
-            )}
-
-            {/* Connected integrations (placeholder) */}
-            <div
-              style={{
-                marginTop: "var(--space-8)",
-                background: "var(--color-bg-elevated)",
-                border: "1px solid var(--color-border-subtle)",
-                borderRadius: 12,
-                padding: "1.25rem",
-              }}
-            >
-              <p style={{ margin: "0 0 0.5rem", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text-primary)" }}>
-                Connected integrations
-              </p>
-              <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--color-text-tertiary)" }}>
-                Your connected integrations will appear here once you connect a runtime above.
+            {/* Env var hint */}
+            <div style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: "var(--radius-lg)", padding: "var(--space-5)" }}>
+              <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.875rem", color: "#60a5fa", margin: "0 0 0.5rem" }}>How connections work</p>
+              <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", lineHeight: 1.6, margin: 0 }}>
+                All credentials are stored as <strong>server-side environment variables</strong> — never in the browser or database. To connect an integration, set the relevant env var in your Render dashboard (Settings → Environment), then redeploy. NexusOps detects the connection automatically on the next health check.
               </p>
             </div>
           </div>

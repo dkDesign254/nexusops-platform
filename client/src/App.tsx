@@ -40,6 +40,7 @@ const AdminPage = lazy(() => import("./pages/admin-page"));
 const AgentsPage = lazy(() => import("./pages/agents-page"));
 const FAQPage = lazy(() => import("./pages/faq-page"));
 const WorkflowBuilderPage = lazy(() => import("./pages/workflow-builder-page"));
+const GovernancePage = lazy(() => import("./pages/governance-page"));
 
 /** Suspense fallback used while lazy protected pages are loading */
 function PageLoader(): JSX.Element {
@@ -204,6 +205,13 @@ function Router(): JSX.Element {
         <AuthGuard>
           <Suspense fallback={<PageLoader />}>
             <WorkflowBuilderPage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
+      <Route path="/governance">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <GovernancePage />
           </Suspense>
         </AuthGuard>
       </Route>

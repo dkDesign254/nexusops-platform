@@ -3,13 +3,21 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import {
   AI_Logs,
+  AgentConfig,
   ExecutionLogs,
   InsertAILog,
+  InsertAgentConfig,
+  InsertAlert,
+  InsertAuditEvent,
   InsertExecutionLog,
   InsertReport,
   InsertUser,
   InsertWorkflow,
+  Report,
   User,
+  agentConfigs,
+  alerts,
+  auditEvents,
   reports,
   users,
   workflows,
@@ -30,6 +38,8 @@ export async function getDb() {
   }
   return _db;
 }
+
+// ─── Users ────────────────────────────────────────────────────────────────────
 
 export async function countUsers(): Promise<number> {
   const db = await getDb();
@@ -84,6 +94,8 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+// ─── Workflows ────────────────────────────────────────────────────────────────
+
 export async function createWorkflow(data: InsertWorkflow) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -106,7 +118,7 @@ export async function getWorkflowById(id: string) {
 
 export async function updateWorkflowStatus(
   id: string,
-  status: "pending" | "running" | "completed" | "failed",
+  status: "pending" | "running" | "completed" | "failed" | "cancelled",
   completedAt?: Date
 ) {
   const db = await getDb();
@@ -115,6 +127,8 @@ export async function updateWorkflowStatus(
   if (completedAt) updateData.completedAt = completedAt;
   await db.update(workflows).set(updateData).where(eq(workflows.id, id));
 }
+
+// ─── Execution Logs ───────────────────────────────────────────────────────────
 
 export async function createExecutionLog(data: InsertExecutionLog) {
   const db = await getDb();
@@ -147,6 +161,8 @@ export async function countFailedLogs(workflowId: string) {
   return result.length;
 }
 
+// ─── AI Logs ──────────────────────────────────────────────────────────────────
+
 export async function createAILog(data: InsertAILog) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -163,6 +179,14 @@ export async function listAILogsByWorkflow(workflowId: string) {
     .orderBy(AI_Logs.timestamp);
 }
 
+export async function flagAILog(id: number, flagged: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(AI_Logs).set({ flagged }).where(eq(AI_Logs.id, id));
+}
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
 export async function createReport(data: InsertReport) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -176,15 +200,34 @@ export async function getReportByWorkflow(workflowId: string) {
   return result[0];
 }
 
-export async function listAllReports() {
+export async function listAllReports(): Promise<Report[]> {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(reports).orderBy(desc(reports.createdAt));
 }
 
+export async function updateReportApproval(
+  id: number,
+  approved: boolean,
+  rejectionReason?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(reports)
+    .set({
+      approved: approved ? true : null,
+      rejected: !approved,
+      rejectionReason: rejectionReason ?? null,
+    })
+    .where(eq(reports.id, id));
+}
+
+// ─── Dashboard Stats ──────────────────────────────────────────────────────────
+
 export async function getDashboardStats() {
   const db = await getDb();
-  if (!db) return { total: 0, pending: 0, running: 0, completed: 0, failed: 0 };
+  if (!db) return { total: 0, pending: 0, running: 0, completed: 0, failed: 0, cancelled: 0 };
 
   const all = await db.select().from(workflows);
   return {
@@ -193,5 +236,66 @@ export async function getDashboardStats() {
     running: all.filter((w) => w.status === "running").length,
     completed: all.filter((w) => w.status === "completed").length,
     failed: all.filter((w) => w.status === "failed").length,
+    cancelled: all.filter((w) => w.status === "cancelled").length,
   };
+}
+
+// ─── Agent Configs ────────────────────────────────────────────────────────────
+
+export async function listAgentConfigs(): Promise<AgentConfig[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(agentConfigs).orderBy(desc(agentConfigs.createdAt));
+}
+
+export async function createAgentConfig(data: InsertAgentConfig): Promise<AgentConfig | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(agentConfigs).values(data).returning();
+  return result[0];
+}
+
+export async function updateAgentConfig(id: number, data: Partial<InsertAgentConfig>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(agentConfigs).set({ ...data, updatedAt: new Date() }).where(eq(agentConfigs.id, id));
+}
+
+// ─── Audit Events ─────────────────────────────────────────────────────────────
+
+export async function createAuditEvent(data: InsertAuditEvent) {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.insert(auditEvents).values(data);
+  } catch {
+    // Non-fatal — audit events should never crash the main flow
+  }
+}
+
+export async function listAuditEvents(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(auditEvents).orderBy(desc(auditEvents.timestamp)).limit(limit);
+}
+
+// ─── Alerts ───────────────────────────────────────────────────────────────────
+
+export async function listAlerts(includeResolved = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const all = await db.select().from(alerts).orderBy(desc(alerts.createdAt));
+  return includeResolved ? all : all.filter((a) => !a.resolved);
+}
+
+export async function createAlert(data: InsertAlert) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(alerts).values(data);
+}
+
+export async function resolveAlert(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(alerts).set({ resolved: true, resolvedAt: new Date() }).where(eq(alerts.id, id));
 }

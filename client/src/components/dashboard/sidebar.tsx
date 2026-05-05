@@ -9,7 +9,7 @@
 import type { ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Logo } from "@/components/ui/logo";
-import { LayoutDashboard, Workflow, ScrollText, Bot, FileText, BarChart3, Settings, Users, Plug, Key, ChevronLeft, ChevronRight, Sparkles, CreditCard, Link2, Shield, SlidersHorizontal, Wand2 } from "lucide-react";
+import { LayoutDashboard, Workflow, ScrollText, Bot, FileText, BarChart3, Settings, Users, Plug, Key, ChevronLeft, ChevronRight, Sparkles, CreditCard, Link2, Shield, SlidersHorizontal, Wand2, ShieldCheck, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { useT } from "@/contexts/LocaleContext";
 
@@ -53,8 +53,9 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps): JSX.El
       ],
     },
     {
-      title: T("nav.connect"),
+      title: "Governance",
       items: [
+        { label: "Governance", href: "/governance", icon: <ShieldCheck size={16} /> },
         { label: T("nav.integrations"), href: "/integrations", icon: <Link2 size={16} /> },
       ],
     },
@@ -64,6 +65,7 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps): JSX.El
         { label: T("nav.billing"), href: "/billing", icon: <CreditCard size={16} /> },
         { label: T("nav.settings"), href: "/settings", icon: <Settings size={16} /> },
         { label: "Admin", href: "/admin", icon: <Shield size={16} /> },
+        { label: "FAQ / Help", href: "/faq", icon: <HelpCircle size={16} /> },
       ],
     },
   ];

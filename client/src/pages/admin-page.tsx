@@ -150,6 +150,7 @@ export default function AdminPage(): JSX.Element {
 
   const syncStatus = trpc.sync.status.useQuery(undefined, { refetchInterval: 30000 });
   const userList = trpc.auth.listUsers.useQuery();
+  const serviceStatusQuery = trpc.system.serviceStatus.useQuery(undefined, { refetchInterval: 30000 });
 
   // Derived workflow stats
   const total = workflows.length;
@@ -168,51 +169,55 @@ export default function AdminPage(): JSX.Element {
   // Recent audit logs (latest 5 events from exec logs as proxy)
   const recentEvents = logs.slice(0, 8);
 
-  // Integration status (derived from ENV presence)
+  // Integration status — pulled from live serviceStatus tRPC call
+  const liveSvcs = serviceStatusQuery.data?.services as Record<string, string> | undefined;
+  const toLevel = (s: string | undefined): StatusLevel =>
+    s === "ok" ? "ok" : s === "degraded" ? "warn" : "error";
+
   const services: ServiceStatus[] = [
     {
       name: "Supabase",
       key: "supabase",
       icon: <Database size={18} />,
-      status: "ok",
-      detail: `Project dzwppsjnkwnlebnxaehu — ${total} workflows`,
+      status: liveSvcs ? toLevel(liveSvcs.supabase) : "unknown",
+      detail: liveSvcs?.supabase === "ok" ? `Connected — ${total} workflows` : "SUPABASE_URL or SERVICE_ROLE_KEY missing",
     },
     {
       name: "Airtable",
       key: "airtable",
       icon: <GitBranch size={18} />,
-      status: syncStatus.data ? "ok" : "warn",
+      status: liveSvcs ? toLevel(liveSvcs.airtable) : "unknown",
       detail: syncStatus.data
         ? `Last sync: ${new Date(syncStatus.data.ts ?? "").toLocaleString()}`
-        : "No sync recorded yet",
+        : liveSvcs?.airtable === "ok" ? "Token configured — no sync yet" : "AIRTABLE_TOKEN not set",
     },
     {
       name: "Make.com",
       key: "make",
       icon: <Zap size={18} />,
-      status: "warn",
-      detail: "MAKE_WEBHOOK_URL required to dispatch",
+      status: liveSvcs ? toLevel(liveSvcs.make) : "unknown",
+      detail: liveSvcs?.make === "ok" ? "MAKE_WEBHOOK_SECRET configured" : "MAKE_WEBHOOK_SECRET not set",
     },
     {
       name: "n8n",
       key: "n8n",
       icon: <Activity size={18} />,
-      status: "warn",
-      detail: "N8N_WEBHOOK_URL required to dispatch",
+      status: liveSvcs ? toLevel(liveSvcs.n8n) : "unknown",
+      detail: liveSvcs?.n8n === "ok" ? "N8N_WEBHOOK_SECRET configured" : "N8N_WEBHOOK_SECRET not set",
     },
     {
       name: "Stripe",
       key: "stripe",
       icon: <Shield size={18} />,
-      status: "warn",
-      detail: "STRIPE_SECRET_KEY not configured",
+      status: liveSvcs ? toLevel(liveSvcs.stripe) : "unknown",
+      detail: liveSvcs?.stripe === "ok" ? "STRIPE_SECRET_KEY configured" : "STRIPE_SECRET_KEY not set",
     },
     {
-      name: "LLM Gateway",
+      name: "LLM / AI",
       key: "llm",
       icon: <Server size={18} />,
-      status: "ok",
-      detail: "Forge/Gemini 2.5 Flash via BUILT_IN_FORGE_API_URL",
+      status: liveSvcs ? toLevel(liveSvcs.llm) : "unknown",
+      detail: liveSvcs?.llm === "ok" ? "API key configured — AI reports active" : "ANTHROPIC_API_KEY not set",
     },
   ];
 

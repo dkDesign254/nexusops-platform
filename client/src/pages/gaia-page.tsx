@@ -2,447 +2,542 @@
  * NexusOps — GAIA AI
  * Route: /gaia (protected)
  *
- * In-app guide, keyword router, section cards, FAQ, and platform walkthrough tour.
+ * Phase 7: Full-featured Gaia interface — chat with session history,
+ * suggested prompts, document upload, suggested agents/workflows,
+ * "Create from this" action buttons, and FAQ shortcuts.
  */
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
-import { useWorkflows } from "@/hooks/use-workflows";
-import { useT } from "@/contexts/LocaleContext";
-import {
-  Activity, ArrowRight, BarChart3, Bot, Brain, ChevronDown, ChevronUp,
-  FileText, LayoutDashboard, MessageSquareText, Settings, Sparkles, Workflow,
-  Upload, File, X, Loader2,
-} from "lucide-react";
-import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import {
+  Bot, ChevronRight, FileText, Loader2, Plus, Send,
+  Sparkles, Upload, Workflow, X, Zap, HelpCircle,
+  RefreshCw, Copy, ThumbsUp, AlertTriangle, CheckCircle2,
+} from "lucide-react";
 
-// ── Tour ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const TOUR_STEP_COUNT = 8;
-const TOUR_ROUTES = [null, "/dashboard", "/workflows", "/audit", "/ai-interactions", "/reports", "/performance", "/gaia"];
-
-function TourCard({ step, total, onNext, onSkip, T }: {
-  step: number; total: number; onNext: () => void; onSkip: () => void;
-  T: (k: Parameters<ReturnType<typeof useT>>[0]) => string;
-}) {
-  const key = step as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-  const titleKey = `tour.${key}.title` as Parameters<typeof T>[0];
-  const descKey = `tour.${key}.desc` as Parameters<typeof T>[0];
-  const isLast = step === total;
-  return (
-    <div style={{
-      position: "fixed", bottom: 32, right: 32, zIndex: 200,
-      background: "var(--color-bg-elevated)", border: "1px solid var(--color-border-default)",
-      borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-lg)",
-      padding: "var(--space-5)", maxWidth: 340, width: "calc(100vw - 64px)",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
-        <span style={{ fontSize: "0.6875rem", color: "var(--color-brand)", fontFamily: "var(--font-display)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          {step} / {total}
-        </span>
-        <button onClick={onSkip} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)", fontSize: "0.75rem", fontFamily: "var(--font-display)" }}>
-          {T("gaia.tourSkip")}
-        </button>
-      </div>
-      <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text-primary)", marginBottom: "0.4rem" }}>{T(titleKey)}</p>
-      <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: "var(--space-4)" }}>{T(descKey)}</p>
-      <div style={{ display: "flex", gap: "var(--space-2)" }}>
-        <button
-          onClick={onNext}
-          style={{ flex: 1, background: "var(--color-brand)", border: "none", borderRadius: "var(--radius-md)", padding: "0.55rem", color: "var(--color-text-inverse)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
-          {isLast ? T("gaia.tourDone") : T("gaia.tourNext")}
-        </button>
-      </div>
-    </div>
-  );
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }
 
-// ── Section card ─────────────────────────────────────────────────────────────
-
-function SectionCard({ icon, title, desc, cta, onClick }: { icon: React.ReactNode; title: string; desc: string; cta: string; onClick: () => void }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ textAlign: "left", background: hovered ? "var(--color-bg-hover)" : "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--space-5)", cursor: "pointer", transition: "all var(--transition-fast)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--space-3)" }}>
-        <div style={{ padding: "var(--space-2)", background: "rgba(14,164,114,0.1)", borderRadius: "var(--radius-md)", border: "1px solid rgba(14,164,114,0.2)" }}>{icon}</div>
-        <ArrowRight size={14} style={{ color: "var(--color-text-tertiary)", marginTop: 2 }} />
-      </div>
-      <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.875rem", color: "var(--color-text-primary)", marginBottom: "0.35rem" }}>{title}</p>
-      <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", lineHeight: 1.55, marginBottom: "var(--space-3)" }}>{desc}</p>
-      <p style={{ fontSize: "0.75rem", color: "var(--color-brand)", fontFamily: "var(--font-display)", fontWeight: 500 }}>{cta}</p>
-    </button>
-  );
+interface Session {
+  id: string;
+  title: string;
+  preview: string;
+  timestamp: Date;
 }
 
-// ── Document Upload & Analysis (Phase 14) ────────────────────────────────────
+// ─── Suggested Prompts ────────────────────────────────────────────────────────
 
-type AnalysisMode = "use_case" | "governance_risks" | "workflow_plan";
-
-const ANALYSIS_MODES: Array<{ value: AnalysisMode; label: string; prompt: string }> = [
-  {
-    value: "use_case",
-    label: "Use Case Builder",
-    prompt: "Analyse this document and identify 3-5 specific AI automation use cases that NexusOps could govern. For each use case, provide: name, description, recommended runtime (Make/n8n), governance considerations, and expected business value. Format as a numbered list.",
-  },
-  {
-    value: "governance_risks",
-    label: "Governance Risk Scan",
-    prompt: "Scan this document for AI governance risks. Identify: data privacy concerns, bias risks, auditability gaps, compliance considerations, and human oversight requirements. Provide a risk level (Low/Medium/High) for each. Format as a structured report.",
-  },
-  {
-    value: "workflow_plan",
-    label: "Workflow Plan",
-    prompt: "Based on this document, design a step-by-step marketing automation workflow that could be implemented in NexusOps. Include: trigger, data sources, processing steps, AI calls, approval gates, and output. Format as a numbered workflow with step types (intake/execution/ai_call/report/completion).",
-  },
+const SUGGESTED_PROMPTS = [
+  { icon: <Workflow size={14} />, label: "Build a weekly reporting workflow", prompt: "I need a weekly report that checks campaign performance, flags low ROAS campaigns, summarises results, and recommends next steps. Which runtime should I use and what integrations do I need?" },
+  { icon: <Bot size={14} />, label: "Set up an anomaly detection agent", prompt: "Help me create an agent that monitors my marketing campaign ROAS and CTR in real time and raises an alert when metrics drop below a threshold. Walk me through what I need step by step." },
+  { icon: <Zap size={14} />, label: "Explain how Make and n8n differ", prompt: "I'm not technical. Can you explain the difference between Make and n8n, and help me decide which one to use for a simple weekly email report?" },
+  { icon: <AlertTriangle size={14} />, label: "Review my governance setup", prompt: "What governance risks exist in my current NexusOps setup? Review what I have and tell me what's missing or risky." },
+  { icon: <FileText size={14} />, label: "Turn my document into a workflow plan", prompt: "I'll upload a use case document. Please analyse it and produce a step-by-step workflow plan with governance requirements and required integrations." },
+  { icon: <HelpCircle size={14} />, label: "What can NexusOps do for me?", prompt: "I'm new here. What can NexusOps do? Give me a plain-English overview of the platform and suggest where I should start." },
 ];
 
-function DocumentUploadPanel(): JSX.Element {
-  const [file, setFile] = useState<File | null>(null);
-  const [fileContent, setFileContent] = useState<string>("");
-  const [mode, setMode] = useState<AnalysisMode>("use_case");
-  const [analysing, setAnalysing] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const gaiaMutation = trpc.gaia.chat.useMutation();
+// ─── FAQ Shortcuts ────────────────────────────────────────────────────────────
 
-  const readFile = useCallback((f: File): void => {
-    if (f.size > 500_000) { toast.error("File too large — max 500 KB"); return; }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = (e.target?.result as string) ?? "";
-      setFile(f);
-      setFileContent(text.slice(0, 8000)); // cap at 8000 chars to stay within context
-      setResult(null);
-    };
-    reader.readAsText(f);
-  }, []);
+const FAQ_SHORTCUTS = [
+  "How do I connect Airtable?",
+  "What is runtime-independent automation?",
+  "How does the AI generate reports?",
+  "Why do I need execution logs?",
+  "How do I create my first agent?",
+];
 
-  function handleDrop(e: React.DragEvent): void {
-    e.preventDefault();
-    setDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) readFile(f);
-  }
+// ─── Message Bubble ───────────────────────────────────────────────────────────
 
-  async function analyse(): Promise<void> {
-    if (!fileContent) { toast.error("Upload a document first"); return; }
-    setAnalysing(true);
-    const selectedMode = ANALYSIS_MODES.find((m) => m.value === mode)!;
-    try {
-      const res = await gaiaMutation.mutateAsync({
-        message: `${selectedMode.prompt}\n\n--- DOCUMENT START ---\n${fileContent}\n--- DOCUMENT END ---`,
-        pageContext: "gaia-document-analysis",
-      });
-      setResult(res.text || "No analysis returned.");
-    } catch {
-      setResult("GAIA analysis unavailable. Check your LLM configuration.");
-      toast.error("Analysis failed");
-    } finally {
-      setAnalysing(false);
-    }
-  }
+function MessageBubble({ msg, onCopy }: { msg: Message; onCopy: (text: string) => void }) {
+  const isUser = msg.role === "user";
+  const lines = msg.content.split("\n");
 
   return (
-    <section style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "var(--space-5)" }}>
-        <div style={{ padding: "var(--space-2)", background: "rgba(14,164,114,0.1)", borderRadius: "var(--radius-md)", border: "1px solid rgba(14,164,114,0.2)" }}>
-          <Upload size={16} style={{ color: "var(--color-brand)" }} />
-        </div>
-        <div>
-          <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text-primary)", margin: 0 }}>Document Analysis</p>
-          <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", margin: "0.2rem 0 0" }}>Upload a brief, strategy document, or spec — GAIA will analyse it for governance use cases and risks.</p>
-        </div>
+    <div style={{
+      display: "flex",
+      flexDirection: isUser ? "row-reverse" : "row",
+      gap: "var(--space-3)",
+      marginBottom: "var(--space-4)",
+      alignItems: "flex-start",
+    }}>
+      {/* Avatar */}
+      <div style={{
+        width: 32, height: 32, borderRadius: "var(--radius-full)",
+        background: isUser ? "rgba(61,255,160,0.12)" : "rgba(96,165,250,0.12)",
+        border: `1px solid ${isUser ? "rgba(61,255,160,0.3)" : "rgba(96,165,250,0.3)"}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        {isUser
+          ? <span style={{ fontSize: "0.75rem", color: "var(--color-brand)" }}>You</span>
+          : <Sparkles size={14} style={{ color: "#60a5fa" }} />}
       </div>
 
-      {/* Drop zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-        style={{
-          border: `2px dashed ${dragging ? "var(--color-brand)" : "var(--color-border-subtle)"}`,
-          borderRadius: "var(--radius-md)",
-          padding: "var(--space-6)",
-          textAlign: "center",
-          cursor: "pointer",
-          background: dragging ? "rgba(61,255,160,0.04)" : "transparent",
-          transition: "all 0.15s",
-          marginBottom: "var(--space-4)",
-        }}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".txt,.md,.csv,.json,.rtf"
-          style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); }}
-        />
-        {file ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", justifyContent: "center" }}>
-            <File size={20} style={{ color: "var(--color-brand)" }} />
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--color-text-primary)" }}>{file.name}</span>
-            <span style={{ fontSize: "0.75rem", color: "var(--color-text-tertiary)" }}>({Math.round(file.size / 1024)} KB)</span>
+      {/* Content */}
+      <div style={{ maxWidth: "78%", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{
+          background: isUser ? "rgba(61,255,160,0.07)" : "var(--color-bg-elevated)",
+          border: `1px solid ${isUser ? "rgba(61,255,160,0.2)" : "var(--color-border-subtle)"}`,
+          borderRadius: "var(--radius-lg)",
+          padding: "0.75rem var(--space-4)",
+        }}>
+          {lines.map((line, i) => (
+            <p key={i} style={{
+              margin: i === 0 ? 0 : "0.5rem 0 0",
+              fontSize: "0.875rem",
+              color: "var(--color-text-primary)",
+              lineHeight: 1.65,
+              fontFamily: "var(--font-body)",
+              whiteSpace: "pre-wrap",
+            }}>
+              {line || " "}
+            </p>
+          ))}
+        </div>
+        {!isUser && (
+          <div style={{ display: "flex", gap: "var(--space-2)", paddingLeft: 4 }}>
             <button
-              onClick={(e) => { e.stopPropagation(); setFile(null); setFileContent(""); setResult(null); }}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)" }}
+              onClick={() => onCopy(msg.content)}
+              title="Copy"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-tertiary)", display: "flex", alignItems: "center", gap: 4, fontSize: "0.6875rem", fontFamily: "var(--font-display)" }}
             >
-              <X size={14} />
+              <Copy size={11} /> Copy
             </button>
-          </div>
-        ) : (
-          <div>
-            <Upload size={24} style={{ color: "var(--color-text-tertiary)", margin: "0 auto var(--space-2)" }} />
-            <p style={{ margin: "0 0 0.25rem", fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--color-text-secondary)" }}>
-              Drop a file or click to browse
-            </p>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-body)" }}>
-              .txt, .md, .csv, .json — max 500 KB
-            </p>
           </div>
         )}
       </div>
-
-      {/* Analysis mode */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
-        {ANALYSIS_MODES.map((m) => (
-          <button
-            key={m.value}
-            onClick={() => setMode(m.value)}
-            style={{ padding: "0.375rem 0.75rem", borderRadius: "var(--radius-sm)", border: `1px solid ${mode === m.value ? "var(--color-brand)" : "var(--color-border-subtle)"}`, background: mode === m.value ? "rgba(61,255,160,0.08)" : "transparent", color: mode === m.value ? "var(--color-brand)" : "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: mode === m.value ? 600 : 400, cursor: "pointer" }}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      <button
-        onClick={() => void analyse()}
-        disabled={analysing || !fileContent}
-        style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.625rem 1.25rem", background: analysing || !fileContent ? "rgba(61,255,160,0.1)" : "var(--color-brand)", border: "none", borderRadius: "var(--radius-md)", color: analysing || !fileContent ? "var(--color-brand)" : "var(--color-bg-base)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.875rem", cursor: analysing || !fileContent ? "not-allowed" : "pointer" }}
-      >
-        {analysing ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Sparkles size={15} />}
-        {analysing ? "Analysing…" : "Analyse with GAIA"}
-      </button>
-
-      {/* Result */}
-      {result && (
-        <div style={{ marginTop: "var(--space-5)", background: "var(--color-bg-elevated)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-md)", padding: "var(--space-4)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "var(--space-3)" }}>
-            <Sparkles size={13} style={{ color: "var(--color-brand)" }} />
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.8125rem", color: "var(--color-brand)" }}>GAIA Analysis</span>
-          </div>
-          <pre style={{ margin: 0, fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "var(--color-text-secondary)", whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.7 }}>
-            {result}
-          </pre>
-        </div>
-      )}
-    </section>
-  );
-}
-
-// ── FAQ item ──────────────────────────────────────────────────────────────────
-
-const FAQ_ITEMS = [
-  { q: "What is NexusOps?", a: "NexusOps is an AI agent operations platform. It monitors every AI-powered workflow running in your organisation, providing governance, observability, and accountability across Make, n8n, and other automation runtimes." },
-  { q: "What are Workflows?", a: "A workflow is any automated process that runs on a connected runtime (Make, n8n, etc.). NexusOps logs every run, tracks success/failure, and links each workflow to its execution logs, AI decisions, and reports." },
-  { q: "What are Execution Logs?", a: "Execution Logs give you a step-by-step trace of every workflow run. Each entry shows the event type, which step ran, the runtime, status code, and any error messages — making it easy to debug failures." },
-  { q: "What are AI Interactions?", a: "AI Interactions show every prompt sent to a language model during workflow execution and the response returned. This is how you audit what AI said, catch hallucinations, and understand why your workflow behaved a certain way." },
-  { q: "What are Final Reports?", a: "Final Reports are AI-generated executive summaries produced after a workflow batch completes. They need your approval before going to stakeholders. You can approve or review them here." },
-  { q: "What is Campaign Data?", a: "Campaign Data connects your workflow activity to business performance — ad spend, conversion rates, and campaign-level outcomes. Use it to see whether your AI automations are driving real results." },
-  { q: "What does GAIA AI do?", a: "GAIA AI is your in-app operator guide. Type what you're looking for and GAIA will route you to the right section. It can't run queries yet, but it understands plain-language requests and navigates the platform for you." },
-  { q: "How do I see only failed workflows?", a: "Click 'Show failed workflows' in the suggestion chips above, or type 'failed' in the Ask GAIA box. You can also filter workflows on the Workflows page and Execution Logs page directly." },
-];
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
-      <button onClick={() => setOpen(!open)}
-        style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "var(--space-4) 0", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: "0.875rem", fontWeight: 500, color: "var(--color-text-primary)" }}>{q}</span>
-        {open ? <ChevronUp size={16} style={{ color: "var(--color-text-tertiary)", flexShrink: 0 }} /> : <ChevronDown size={16} style={{ color: "var(--color-text-tertiary)", flexShrink: 0 }} />}
-      </button>
-      {open && (
-        <p style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)", lineHeight: 1.65, paddingBottom: "var(--space-4)" }}>{a}</p>
-      )}
     </div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ─── Suggested Action Panel ───────────────────────────────────────────────────
 
-export default function GAIAPage(): JSX.Element {
+function SuggestedActions({ lastResponse, onNavigate }: { lastResponse: string; onNavigate: (path: string) => void }) {
+  const lower = lastResponse.toLowerCase();
+  const suggestWorkflow = lower.includes("workflow") || lower.includes("runtime") || lower.includes("make") || lower.includes("n8n");
+  const suggestAgent = lower.includes("agent") || lower.includes("monitor") || lower.includes("anomaly");
+  const suggestIntegrations = lower.includes("integration") || lower.includes("connect") || lower.includes("airtable");
+
+  if (!suggestWorkflow && !suggestAgent && !suggestIntegrations) return null;
+
+  return (
+    <div style={{
+      background: "var(--color-bg-surface)",
+      border: "1px solid var(--color-border-subtle)",
+      borderRadius: "var(--radius-lg)",
+      padding: "var(--space-4)",
+      marginTop: "var(--space-3)",
+    }}>
+      <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "var(--space-3)" }}>
+        Suggested next steps
+      </p>
+      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+        {suggestWorkflow && (
+          <button
+            onClick={() => onNavigate("/builder")}
+            style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4rem 0.875rem", background: "rgba(61,255,160,0.08)", border: "1px solid rgba(61,255,160,0.25)", borderRadius: "var(--radius-md)", color: "var(--color-brand)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+          >
+            <Workflow size={13} /> Build this workflow
+          </button>
+        )}
+        {suggestAgent && (
+          <button
+            onClick={() => onNavigate("/agents")}
+            style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4rem 0.875rem", background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: "var(--radius-md)", color: "#60a5fa", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+          >
+            <Bot size={13} /> Create an agent
+          </button>
+        )}
+        {suggestIntegrations && (
+          <button
+            onClick={() => onNavigate("/integrations")}
+            style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.4rem 0.875rem", background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.25)", borderRadius: "var(--radius-md)", color: "#c084fc", fontFamily: "var(--font-display)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+          >
+            <Zap size={13} /> Connect integrations
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Document Upload ──────────────────────────────────────────────────────────
+
+function DocumentUpload({ onExtracted }: { onExtracted: (text: string, filename: string) => void }) {
+  const [dragging, setDragging] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const process = useCallback((file: File) => {
+    if (file.size > 600_000) { toast.error("File too large — max 600 KB"); return; }
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = (e.target?.result as string).slice(0, 8000);
+      onExtracted(text, file.name);
+      setLoading(false);
+      toast.success(`"${file.name}" ready to analyse`);
+    };
+    reader.onerror = () => { toast.error("Failed to read file"); setLoading(false); };
+    reader.readAsText(file);
+  }, [onExtracted]);
+
+  return (
+    <div
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) process(f); }}
+      onClick={() => inputRef.current?.click()}
+      style={{
+        border: `1px dashed ${dragging ? "var(--color-brand)" : "var(--color-border-subtle)"}`,
+        borderRadius: "var(--radius-md)", padding: "0.875rem",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+        cursor: loading ? "not-allowed" : "pointer",
+        background: dragging ? "rgba(61,255,160,0.04)" : "transparent",
+        transition: "all 0.15s",
+        color: "var(--color-text-tertiary)", fontSize: "0.8125rem", fontFamily: "var(--font-display)",
+      }}
+    >
+      <input ref={inputRef} type="file" accept=".txt,.md,.pdf,.csv,.json" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) process(f); }} />
+      {loading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Upload size={14} />}
+      {loading ? "Reading…" : "Upload use case (.txt, .md, .csv, .json)"}
+    </div>
+  );
+}
+
+// ─── Session History Panel ────────────────────────────────────────────────────
+
+function SessionPanel({ sessions, activeId, onSelect, onNew }: {
+  sessions: Session[]; activeId: string; onSelect: (id: string) => void; onNew: () => void;
+}) {
+  return (
+    <div style={{
+      width: 220, flexShrink: 0, background: "var(--color-bg-surface)",
+      borderRight: "1px solid var(--color-border-subtle)",
+      display: "flex", flexDirection: "column",
+    }}>
+      <div style={{ padding: "var(--space-4)", borderBottom: "1px solid var(--color-border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: "0.75rem", fontWeight: 600, fontFamily: "var(--font-display)", color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>History</span>
+        <button
+          onClick={onNew}
+          style={{ background: "rgba(61,255,160,0.1)", border: "1px solid rgba(61,255,160,0.25)", borderRadius: "var(--radius-sm)", padding: "0.2rem 0.5rem", color: "var(--color-brand)", fontFamily: "var(--font-display)", fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+        >
+          <Plus size={11} /> New
+        </button>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {sessions.length === 0 && (
+          <p style={{ padding: "var(--space-4)", fontSize: "0.75rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)" }}>No history yet</p>
+        )}
+        {sessions.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => onSelect(s.id)}
+            style={{
+              width: "100%", textAlign: "left", padding: "0.75rem var(--space-3)",
+              background: s.id === activeId ? "rgba(61,255,160,0.06)" : "transparent",
+              borderLeft: s.id === activeId ? "2px solid var(--color-brand)" : "2px solid transparent",
+              border: "none", cursor: "pointer",
+              borderBottom: "1px solid var(--color-border-subtle)",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "0.8125rem", fontFamily: "var(--font-display)", fontWeight: 500, color: s.id === activeId ? "var(--color-brand)" : "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</p>
+            <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--color-text-tertiary)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.preview}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+const SYSTEM_PROMPT = `You are Gaia, the AI governance and agent-building copilot inside NexusOps.
+
+Your job is to help any user, technical or non-technical, turn organisational pain points into governed AI workflows and agents.
+
+You can: explain AI and automation concepts, analyse workflows and logs, suggest agents, draft workflows, recommend integrations, explain risks, create action plans, simplify technical setup, and guide users step by step.
+
+Rules:
+- Be clear, practical, and beginner-friendly. Use plain English, not jargon.
+- Separate facts from assumptions.
+- Always include governance considerations: traceability, logging, approvals, safe failure handling.
+- Suggest the smallest useful first agent before recommending complex systems.
+- When the user describes a business problem, respond with: (1) Understanding of the need, (2) Suggested approach, (3) Required integrations, (4) Governance requirements, (5) Next steps.
+- Keep responses concise but complete. Use line breaks for readability.`;
+
+export default function GaiaPage(): JSX.Element {
   const [, setLocation] = useLocation();
-  const { data: workflows } = useWorkflows();
-  const T = useT();
-  const [prompt, setPrompt] = useState("");
-  const [tourStep, setTourStep] = useState<number | null>(null);
 
-  function handleAsk() {
-    const text = prompt.trim().toLowerCase();
-    if (!text) { toast.error("Type a request first."); return; }
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState("default");
+  const [sessionMessages, setSessionMessages] = useState<Record<string, Message[]>>({ default: [] });
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    if (text.includes("failed") || text.includes("failure")) { setLocation("/audit?status=failed"); return; }
-    if (text.includes("pending")) { setLocation("/audit?status=pending"); return; }
-    if (text.includes("completed") || text.includes("success")) { setLocation("/audit?status=completed"); return; }
-    if (text.includes("make")) { setLocation("/workflows?runtime=make"); return; }
-    if (text.includes("n8n")) { setLocation("/workflows?runtime=n8n"); return; }
-    if (text.includes("workflow")) { setLocation("/workflows"); return; }
-    if (text.includes("log") || text.includes("execution") || text.includes("error")) { setLocation("/audit"); return; }
-    if (text.includes("ai") || text.includes("prompt") || text.includes("model")) { setLocation("/ai-interactions"); return; }
-    if (text.includes("report") || text.includes("summary")) { setLocation("/reports"); return; }
-    if (text.includes("performance") || text.includes("campaign") || text.includes("conversion")) { setLocation("/performance"); return; }
-    if (text.includes("setting") || text.includes("api") || text.includes("key")) { setLocation("/settings"); return; }
-    if (text.includes("dashboard") || text.includes("overview")) { setLocation("/dashboard"); return; }
+  const messages = sessionMessages[activeSessionId] ?? [];
 
-    toast.info("GAIA understood the request but that route isn't mapped yet. Try a more specific keyword.");
-  }
+  const chatMutation = trpc.gaia.chat.useMutation({
+    onSuccess: (data) => {
+      const reply: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: data.reply,
+        timestamp: new Date(),
+      };
+      setSessionMessages((prev) => ({
+        ...prev,
+        [activeSessionId]: [...(prev[activeSessionId] ?? []), reply],
+      }));
+      setLoading(false);
+    },
+    onError: (e) => {
+      toast.error(e.message);
+      setLoading(false);
+    },
+  });
 
-  function startTour() {
-    setTourStep(1);
-  }
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
-  function advanceTour() {
-    if (tourStep === null) return;
-    const next = tourStep + 1;
-    if (next > TOUR_STEP_COUNT) {
-      setTourStep(null);
-      return;
+  const send = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: trimmed,
+      timestamp: new Date(),
+    };
+
+    const currentMessages = sessionMessages[activeSessionId] ?? [];
+    const updated = [...currentMessages, userMsg];
+    setSessionMessages((prev) => ({ ...prev, [activeSessionId]: updated }));
+
+    if (activeSessionId === "default" && currentMessages.length === 0) {
+      const title = trimmed.slice(0, 40) + (trimmed.length > 40 ? "…" : "");
+      setSessions((prev) => [{ id: "default", title, preview: trimmed.slice(0, 60), timestamp: new Date() }, ...prev.filter(s => s.id !== "default")]);
     }
-    const route = TOUR_ROUTES[next];
-    if (route && route !== "/gaia") setLocation(route);
-    setTourStep(next);
-  }
 
-  const CARDS = [
-    { icon: <Workflow size={16} style={{ color: "var(--color-brand)" }} />, title: T("gaia.card.workflows"), desc: T("gaia.card.workflows.desc"), cta: T("gaia.card.workflows.cta"), route: "/workflows" },
-    { icon: <Activity size={16} style={{ color: "#60a5fa" }} />, title: T("gaia.card.execLogs"), desc: T("gaia.card.execLogs.desc"), cta: T("gaia.card.execLogs.cta"), route: "/audit" },
-    { icon: <Bot size={16} style={{ color: "#a78bfa" }} />, title: T("gaia.card.aiLogs"), desc: T("gaia.card.aiLogs.desc"), cta: T("gaia.card.aiLogs.cta"), route: "/ai-interactions" },
-    { icon: <FileText size={16} style={{ color: "#fb923c" }} />, title: T("gaia.card.reports"), desc: T("gaia.card.reports.desc"), cta: T("gaia.card.reports.cta"), route: "/reports" },
-    { icon: <BarChart3 size={16} style={{ color: "#34d399" }} />, title: T("gaia.card.performance"), desc: T("gaia.card.performance.desc"), cta: T("gaia.card.performance.cta"), route: "/performance" },
-    { icon: <Settings size={16} style={{ color: "#f87171" }} />, title: T("gaia.card.settings"), desc: T("gaia.card.settings.desc"), cta: T("gaia.card.settings.cta"), route: "/settings" },
-  ];
+    setInput("");
+    setLoading(true);
 
-  const CHIPS = [
-    { label: T("gaia.chip.failedWf"), action: () => setLocation("/audit?status=failed") },
-    { label: T("gaia.chip.makeWf"), action: () => setLocation("/workflows?runtime=make") },
-    { label: T("gaia.chip.n8nWf"), action: () => setLocation("/workflows?runtime=n8n") },
-    { label: T("gaia.chip.aiLogs"), action: () => { setPrompt("Explain AI logs"); } },
-    { label: T("gaia.chip.reports"), action: () => setLocation("/reports") },
-  ];
+    chatMutation.mutate({
+      messages: [
+        { role: "system" as const, content: SYSTEM_PROMPT },
+        ...updated.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      ],
+    });
+  }, [loading, sessionMessages, activeSessionId, chatMutation]);
+
+  const newSession = useCallback(() => {
+    const id = crypto.randomUUID();
+    setSessions((prev) => [{ id, title: "New conversation", preview: "", timestamp: new Date() }, ...prev]);
+    setSessionMessages((prev) => ({ ...prev, [id]: [] }));
+    setActiveSessionId(id);
+    setInput("");
+  }, []);
+
+  const copyToClipboard = useCallback((text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("Copied"));
+  }, []);
+
+  const handleDocumentExtracted = useCallback((text: string, filename: string) => {
+    const prompt = `I've uploaded a document called "${filename}". Please analyse it and provide:\n1. A summary of the business need or problem described\n2. A suggested NexusOps workflow plan to address it\n3. Required integrations and runtimes\n4. Governance and audit requirements\n5. Recommended next steps\n\nDocument content:\n\n${text}`;
+    send(prompt);
+  }, [send]);
+
+  const lastAssistantMsg = [...messages].reverse().find(m => m.role === "assistant");
+  const isEmpty = messages.length === 0;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title={T("gaia.title")} />
-        <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
-          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <TopBar title="GAIA AI" />
 
-            {/* Hero */}
-            <section style={{ background: "var(--color-bg-surface)", borderRadius: "var(--radius-xl)", padding: "var(--space-7)", border: "1px solid var(--color-border-subtle)", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(circle at top right, rgba(14,164,114,0.08), transparent 40%)" }} />
-              <div style={{ position: "relative" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", borderRadius: "var(--radius-full)", border: "1px solid rgba(14,164,114,0.3)", background: "rgba(14,164,114,0.08)", padding: "0.3rem 0.75rem", marginBottom: "var(--space-4)" }}>
-                  <Sparkles size={12} style={{ color: "var(--color-brand)" }} />
-                  <span style={{ fontSize: "0.75rem", color: "var(--color-brand)", fontFamily: "var(--font-display)", fontWeight: 600 }}>GAIA AI · NexusOps Guide</span>
-                </div>
-                <h1 style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", fontWeight: 700, color: "var(--color-text-primary)", letterSpacing: "-0.02em", marginBottom: "0.5rem" }}>
-                  {T("gaia.title")}
-                </h1>
-                <p style={{ fontSize: "0.9375rem", color: "var(--color-text-secondary)", maxWidth: 640, lineHeight: 1.6 }}>
-                  {T("gaia.subtitle")}
-                </p>
-                <div style={{ marginTop: "var(--space-5)", display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                    <LayoutDashboard size={14} style={{ color: "var(--color-text-tertiary)" }} />
-                    <span style={{ fontSize: "0.8125rem", color: "var(--color-text-tertiary)" }}>{workflows.length} workflows monitored</span>
-                  </div>
-                  <button onClick={startTour}
-                    style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", background: "none", border: "1px solid var(--color-border-default)", borderRadius: "var(--radius-md)", padding: "0.4rem 0.85rem", cursor: "pointer", color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", transition: "all var(--transition-fast)" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-brand)"; e.currentTarget.style.color = "var(--color-brand)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border-default)"; e.currentTarget.style.color = "var(--color-text-secondary)"; }}>
-                    <Sparkles size={13} /> {T("gaia.tourStart")}
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            {/* Ask GAIA */}
-            <section style={{ background: "var(--color-bg-surface)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", border: "1px solid rgba(14,164,114,0.2)", boxShadow: "0 0 0 1px rgba(14,164,114,0.06), 0 4px 32px rgba(14,164,114,0.06)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-                <div style={{ padding: "var(--space-2)", background: "rgba(14,164,114,0.1)", borderRadius: "var(--radius-md)", border: "1px solid rgba(14,164,114,0.2)" }}>
-                  <Brain size={16} style={{ color: "var(--color-brand)" }} />
-                </div>
-                <div>
-                  <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text-primary)" }}>{T("gaia.askTitle")}</p>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--color-text-secondary)", marginTop: 2 }}>{T("gaia.askSub")}</p>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-                <input
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAsk(); }}
-                  placeholder={T("gaia.placeholder")}
-                  style={{ flex: 1, minWidth: 200, height: 44, borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-default)", background: "var(--color-bg-elevated)", color: "var(--color-text-primary)", fontFamily: "var(--font-display)", fontSize: "0.875rem", padding: "0 var(--space-4)", outline: "none" }}
-                />
-                <button onClick={handleAsk}
-                  style={{ height: 44, padding: "0 var(--space-5)", background: "var(--color-brand)", border: "none", borderRadius: "var(--radius-md)", color: "#fff", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "var(--space-2)", whiteSpace: "nowrap" }}>
-                  <MessageSquareText size={15} /> {T("gaia.btn")}
-                </button>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
-                {CHIPS.map((chip) => (
-                  <button key={chip.label} onClick={chip.action}
-                    style={{ padding: "0.35rem 0.85rem", borderRadius: "var(--radius-full)", border: "1px solid var(--color-border-default)", background: "var(--color-bg-elevated)", color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: "0.8125rem", cursor: "pointer", transition: "all var(--transition-fast)" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-brand)"; e.currentTarget.style.color = "var(--color-brand)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border-default)"; e.currentTarget.style.color = "var(--color-text-secondary)"; }}>
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* Section cards */}
-            <section>
-              <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text-primary)", marginBottom: "var(--space-4)" }}>{T("gaia.cardsTitle")}</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "var(--space-4)" }}>
-                {CARDS.map((card) => (
-                  <SectionCard key={card.route} icon={card.icon} title={card.title} desc={card.desc} cta={card.cta} onClick={() => setLocation(card.route)} />
-                ))}
-              </div>
-            </section>
-
-            {/* Document Upload & Analysis */}
-            <DocumentUploadPanel />
-
-            {/* FAQ */}
-            <section style={{ background: "var(--color-bg-surface)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", border: "1px solid var(--color-border-subtle)" }}>
-              <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9375rem", color: "var(--color-text-primary)", marginBottom: "var(--space-4)" }}>{T("gaia.faqTitle")}</p>
-              {FAQ_ITEMS.map((item) => (
-                <FaqItem key={item.q} q={item.q} a={item.a} />
-              ))}
-            </section>
-
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          {/* Session history */}
+          <div className="hidden lg:flex">
+            <SessionPanel
+              sessions={sessions}
+              activeId={activeSessionId}
+              onSelect={setActiveSessionId}
+              onNew={newSession}
+            />
           </div>
-        </main>
+
+          {/* Main chat area */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
+              <div style={{ maxWidth: 760, margin: "0 auto" }}>
+
+                {/* Welcome state */}
+                {isEmpty && (
+                  <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
+                    <div style={{ width: 64, height: 64, borderRadius: "var(--radius-full)", background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto var(--space-4)" }}>
+                      <Sparkles size={28} style={{ color: "#60a5fa" }} />
+                    </div>
+                    <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.375rem", color: "var(--color-text-primary)", marginBottom: "var(--space-2)" }}>
+                      Hello, I'm GAIA
+                    </h2>
+                    <p style={{ fontSize: "0.9375rem", color: "var(--color-text-secondary)", lineHeight: 1.6, maxWidth: 480, margin: "0 auto var(--space-6)" }}>
+                      I help you turn business problems into governed AI workflows — no technical knowledge required. Describe what you need, upload a document, or choose a starting point below.
+                    </p>
+
+                    {/* Suggested prompts */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)", textAlign: "left", marginBottom: "var(--space-6)" }}>
+                      {SUGGESTED_PROMPTS.map((p) => (
+                        <button
+                          key={p.label}
+                          onClick={() => send(p.prompt)}
+                          style={{
+                            display: "flex", alignItems: "flex-start", gap: "var(--space-3)",
+                            padding: "var(--space-4)", borderRadius: "var(--radius-lg)",
+                            background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)",
+                            cursor: "pointer", textAlign: "left", transition: "border-color 0.15s",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(61,255,160,0.3)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--color-border-subtle)")}
+                        >
+                          <span style={{ color: "var(--color-brand)", marginTop: 2, flexShrink: 0 }}>{p.icon}</span>
+                          <span style={{ fontSize: "0.8125rem", fontFamily: "var(--font-display)", color: "var(--color-text-primary)", fontWeight: 500, lineHeight: 1.4 }}>{p.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* FAQ shortcuts */}
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "center" }}>
+                      {FAQ_SHORTCUTS.map((q) => (
+                        <button
+                          key={q}
+                          onClick={() => send(q)}
+                          style={{
+                            padding: "0.3rem 0.75rem", borderRadius: "var(--radius-full)",
+                            background: "transparent", border: "1px solid var(--color-border-subtle)",
+                            color: "var(--color-text-secondary)", fontFamily: "var(--font-display)",
+                            fontSize: "0.75rem", cursor: "pointer", transition: "all 0.15s",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(61,255,160,0.3)"; e.currentTarget.style.color = "var(--color-brand)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border-subtle)"; e.currentTarget.style.color = "var(--color-text-secondary)"; }}
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Conversation */}
+                {messages.map((msg) => (
+                  <MessageBubble key={msg.id} msg={msg} onCopy={copyToClipboard} />
+                ))}
+
+                {/* Loading indicator */}
+                {loading && (
+                  <div style={{ display: "flex", gap: "var(--space-3)", marginBottom: "var(--space-4)", alignItems: "flex-start" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "var(--radius-full)", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Sparkles size={14} style={{ color: "#60a5fa" }} />
+                    </div>
+                    <div style={{ background: "var(--color-bg-elevated)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "0.875rem var(--space-4)", display: "flex", gap: 6, alignItems: "center" }}>
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#60a5fa", animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suggested actions after last assistant message */}
+                {lastAssistantMsg && !loading && (
+                  <SuggestedActions
+                    lastResponse={lastAssistantMsg.content}
+                    onNavigate={setLocation}
+                  />
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+
+            {/* Input area */}
+            <div style={{ borderTop: "1px solid var(--color-border-subtle)", padding: "var(--space-4) var(--space-6)", background: "var(--color-bg-surface)" }}>
+              <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+
+                {/* Document upload */}
+                <DocumentUpload onExtracted={handleDocumentExtracted} />
+
+                {/* Text input */}
+                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-end" }}>
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        send(input);
+                      }
+                    }}
+                    placeholder="Describe your business problem, ask a question, or request a workflow plan… (Enter to send, Shift+Enter for new line)"
+                    rows={3}
+                    disabled={loading}
+                    style={{
+                      flex: 1, padding: "0.75rem var(--space-4)", resize: "none",
+                      background: "var(--color-bg-base)", border: "1px solid var(--color-border-default)",
+                      borderRadius: "var(--radius-lg)", color: "var(--color-text-primary)",
+                      fontFamily: "var(--font-body)", fontSize: "0.875rem", lineHeight: 1.5,
+                      outline: "none", transition: "border-color 0.15s",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(61,255,160,0.4)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border-default)")}
+                  />
+                  <button
+                    onClick={() => send(input)}
+                    disabled={loading || !input.trim()}
+                    style={{
+                      width: 44, height: 44, borderRadius: "var(--radius-md)",
+                      background: loading || !input.trim() ? "var(--color-bg-elevated)" : "var(--color-brand)",
+                      border: "none", cursor: loading || !input.trim() ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: loading || !input.trim() ? "var(--color-text-tertiary)" : "var(--color-bg-base)",
+                      flexShrink: 0, transition: "all 0.15s",
+                    }}
+                  >
+                    {loading ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={18} />}
+                  </button>
+                </div>
+
+                <p style={{ fontSize: "0.6875rem", color: "var(--color-text-tertiary)", textAlign: "center", fontFamily: "var(--font-display)" }}>
+                  GAIA may make mistakes. Always review AI-generated workflows before deploying to production.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {tourStep !== null && (
-        <TourCard
-          step={tourStep}
-          total={TOUR_STEP_COUNT}
-          onNext={advanceTour}
-          onSkip={() => setTourStep(null)}
-          T={T}
-        />
-      )}
+      {/* Pulse animation */}
+      <style>{`
+        @keyframes pulse {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 }
