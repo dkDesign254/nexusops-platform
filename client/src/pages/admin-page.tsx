@@ -11,7 +11,7 @@ import {
   Users, Zap, Shield, Server, GitBranch, Loader2,
   BarChart3, Clock, Trash2, Download, XCircle,
 } from "lucide-react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { trpc } from "@/lib/trpc";
 import { useWorkflows } from "@/hooks/use-workflows";
@@ -132,13 +132,14 @@ function MetricCard({ label, value, sub, color }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminPage(): JSX.Element {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { user } = useAuth();
   const { data: workflows, loading: wfLoading } = useWorkflows();
   const { data: logs } = useExecutionLogs();
 
   const syncMutation = trpc.sync.runAirtableSync.useMutation({
     onSuccess: (res) => {
-      toast.success(`Sync complete — ${res.imported ?? 0} imported, ${res.updated ?? 0} updated`);
+      toast.success(`Sync complete — ${res.totalSynced ?? 0} records synced`);
     },
     onError: (e) => toast.error(`Sync failed: ${e.message}`),
   });
@@ -188,7 +189,7 @@ export default function AdminPage(): JSX.Element {
       icon: <GitBranch size={18} />,
       status: liveSvcs ? toLevel(liveSvcs.airtable) : "unknown",
       detail: syncStatus.data
-        ? `Last sync: ${new Date(syncStatus.data.ts ?? "").toLocaleString()}`
+        ? `Last sync: ${new Date(syncStatus.data.completedAt ?? "").toLocaleString()}`
         : liveSvcs?.airtable === "ok" ? "Token configured — no sync yet" : "AIRTABLE_TOKEN not set",
     },
     {
@@ -226,8 +227,9 @@ export default function AdminPage(): JSX.Element {
     return (
       <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
         <div className="hidden md:flex"><Sidebar /></div>
+        <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <TopBar title="Admin" />
+          <TopBar title="Admin" onMobileMenuOpen={() => setMobileNavOpen(true)} />
           <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ textAlign: "center" }}>
               <XCircle size={40} style={{ color: "#f87171", margin: "0 auto 1rem" }} />
@@ -247,8 +249,9 @@ export default function AdminPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Admin Dashboard" />
+        <TopBar title="Admin Dashboard" onMobileMenuOpen={() => setMobileNavOpen(true)} />
 
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>

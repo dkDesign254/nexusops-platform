@@ -47,10 +47,10 @@ export function useFinalReports(): UseFinalReportsReturn {
     }
   }, []);
 
-  const approveReport = useCallback(async (reportId: string, approvedBy: string): Promise<void> => {
+  const approveReport = useCallback(async (reportId: string, _approvedBy?: string): Promise<void> => {
     const { error: err } = await supabase
       .from("final_reports")
-      .update({ approved: true, approved_by: approvedBy, approved_at: new Date().toISOString() })
+      .update({ approved: true })
       .eq("id", reportId);
     if (err) throw new Error(err.message);
     await fetch();

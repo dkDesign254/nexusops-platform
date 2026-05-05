@@ -6,10 +6,10 @@
  * risk heatmap, policy checklist, runtime independence diagram.
  */
 import { useState } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useWorkflows } from "@/hooks/use-workflows";
-import { trpc } from "@/lib/trpc";
+import { useExecutionLogs } from "@/hooks/use-execution-logs";
 import {
   AlertTriangle, CheckCircle2, ChevronDown, ChevronUp,
   Clock, FileCheck, Lock, ShieldCheck, TrendingUp, XCircle,
@@ -193,10 +193,9 @@ function AuditRow({ wf, logs }: { wf: { id: string; name: string }; logs: { step
 
 export default function GovernancePage(): JSX.Element {
   const { data: workflows } = useWorkflows();
-  const logsQuery = trpc.logs.list.useQuery();
+  const { data: logs } = useExecutionLogs();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null);
-
-  const logs = logsQuery.data ?? [];
 
   // Governance score calculation
   const total = workflows.length;
@@ -288,8 +287,9 @@ export default function GovernancePage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Governance" />
+        <TopBar title="Governance" onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
 

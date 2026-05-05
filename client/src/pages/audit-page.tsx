@@ -9,7 +9,7 @@
  */
 import { useState, useMemo } from "react";
 import { LayoutList, GitBranch, Search, Download, CheckCircle2 } from "lucide-react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useExecutionLogs } from "@/hooks/use-execution-logs";
 import { useT } from "@/contexts/LocaleContext";
@@ -202,6 +202,7 @@ type StatusFilter = typeof STATUS_OPTIONS[number];
 export default function AuditPage(): JSX.Element {
   const { data, loading } = useExecutionLogs();
   const T = useT();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [view, setView] = useState<"table" | "swimlane">("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -229,8 +230,9 @@ export default function AuditPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title={T("page.executionLogs")} />
+        <TopBar title={T("page.executionLogs")} onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto" }}>
 

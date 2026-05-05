@@ -7,7 +7,7 @@
  */
 import { useState, useMemo, useCallback } from "react";
 import { Search, Flag, Download, Sparkles, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useAILogs } from "@/hooks/use-ai-logs";
 import { useT } from "@/contexts/LocaleContext";
@@ -56,8 +56,10 @@ function GaiaExplainPanel({ prompt, response, onClose }: { prompt: string; respo
     setLoading(true);
     try {
       const result = await gaiaMutation.mutateAsync({
-        message: `Analyse this AI interaction for governance concerns. Prompt: "${prompt.slice(0, 400)}" Response: "${response.slice(0, 400)}". Identify: 1) potential bias or errors, 2) compliance risks, 3) whether human review is recommended. Keep your answer concise and structured.`,
-        pageContext: "ai-interactions",
+        messages: [
+          { role: "system" as const, content: "You are a governance analyst. Analyse AI interactions for compliance risks. Be concise and structured." },
+          { role: "user" as const, content: `Analyse this AI interaction for governance concerns. Prompt: "${prompt.slice(0, 400)}" Response: "${response.slice(0, 400)}". Identify: 1) potential bias or errors, 2) compliance risks, 3) whether human review is recommended.` },
+        ],
       });
       setExplanation(result.text || "Unable to generate explanation.");
     } catch {
@@ -95,6 +97,7 @@ function GaiaExplainPanel({ prompt, response, onClose }: { prompt: string; respo
 
 export default function AIInteractionsPage(): JSX.Element {
   const { data, loading, refetch } = useAILogs();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [gaiaOpen, setGaiaOpen] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -136,8 +139,9 @@ export default function AIInteractionsPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title={T("page.aiInteractions")} />
+        <TopBar title={T("page.aiInteractions")} onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
 

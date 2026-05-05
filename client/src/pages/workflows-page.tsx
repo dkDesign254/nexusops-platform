@@ -5,7 +5,7 @@
  * Phase 9: Governance actions — cancel (running/pending) and retry (failed/cancelled).
  */
 import { useState } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { RecentWorkflows } from "@/components/dashboard/recent-workflows";
 import { useWorkflows } from "@/hooks/use-workflows";
@@ -139,6 +139,7 @@ function TriggerModal({ onClose, onTriggered }: { onClose: () => void; onTrigger
 
 export default function WorkflowsPage(): JSX.Element {
   const { data, loading, refetch } = useWorkflows();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [showTrigger, setShowTrigger] = useState(false);
   const T = useT();
@@ -162,8 +163,9 @@ export default function WorkflowsPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Workflows" />
+        <TopBar title="Workflows" onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
 

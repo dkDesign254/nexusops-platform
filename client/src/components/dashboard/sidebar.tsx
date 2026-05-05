@@ -16,9 +16,11 @@ import { useT } from "@/contexts/LocaleContext";
 export interface SidebarProps {
   collapsed?: boolean;
   onCollapse?: (v: boolean) => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ collapsed = false, onCollapse }: SidebarProps): JSX.Element {
+export function Sidebar({ collapsed = false, onCollapse, mobileOpen = false, onMobileClose }: SidebarProps): JSX.Element {
   const [location, setLocation] = useLocation();
   const [internalCollapsed, setInternalCollapsed] = useState(collapsed);
   const isCollapsed = onCollapse ? collapsed : internalCollapsed;
@@ -217,5 +219,27 @@ export function Sidebar({ collapsed = false, onCollapse }: SidebarProps): JSX.El
         </div>
       </nav>
     </aside>
+  );
+}
+
+/**
+ * MobileSidebar — Full-height overlay sidebar for screens smaller than md.
+ * Rendered as a portal-style fixed overlay with a backdrop.
+ */
+export function MobileSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }): JSX.Element | null {
+  if (!isOpen) return null;
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, zIndex: 199, background: "rgba(0,0,0,0.55)" }}
+        aria-hidden="true"
+      />
+      {/* Slide-in panel */}
+      <div style={{ position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 200 }}>
+        <Sidebar mobileOpen={isOpen} onMobileClose={onClose} />
+      </div>
+    </>
   );
 }

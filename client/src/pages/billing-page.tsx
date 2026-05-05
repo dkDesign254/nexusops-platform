@@ -6,7 +6,7 @@
  * Stripe integration will be wired here in a future sprint.
  */
 import { useState } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { useT } from "@/contexts/LocaleContext";
 import { usePricing } from "@/hooks/use-pricing";
@@ -214,6 +214,7 @@ const FALLBACK_PLANS: PricingPlan[] = [
 
 export default function BillingPage(): JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const T = useT();
   const { plans, loading } = usePricing();
 
@@ -224,9 +225,10 @@ export default function BillingPage(): JSX.Element {
       <div className="hidden md:flex">
         <Sidebar collapsed={sidebarCollapsed} onCollapse={setSidebarCollapsed} />
       </div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <TopBar title={T("nav.billing")} />
+        <TopBar title={T("nav.billing")} onMobileMenuOpen={() => setMobileNavOpen(true)} />
 
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>

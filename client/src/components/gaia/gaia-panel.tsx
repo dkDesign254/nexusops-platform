@@ -142,10 +142,19 @@ export function GaiaPanel({ isOpen, onClose }: GaiaPanelProps): JSX.Element {
     chatHistory.current = [...chatHistory.current, { role: "user", text: trimmed }].slice(-10);
 
     try {
+      const priorHistory = chatHistory.current.slice(0, -1);
       const result = await gaiaMutation.mutateAsync({
-        message: trimmed,
-        pageContext,
-        history: chatHistory.current.slice(0, -1), // exclude current message (already in `message`)
+        messages: [
+          {
+            role: "system" as const,
+            content: `You are GAIA, the AI governance assistant for NexusOps. Be concise and helpful.\n\nPage context: ${pageContext}`,
+          },
+          ...priorHistory.map((h) => ({
+            role: (h.role === "user" ? "user" : "assistant") as "user" | "assistant",
+            content: h.text,
+          })),
+          { role: "user" as const, content: trimmed },
+        ],
       });
 
       const responseText =

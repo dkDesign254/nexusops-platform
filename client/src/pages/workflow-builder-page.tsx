@@ -8,7 +8,7 @@
  * the workflow into NexusOps governance.
  */
 import { useState, useCallback } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/topbar";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -131,6 +131,7 @@ function uid(): string {
 }
 
 export default function WorkflowBuilderPage(): JSX.Element {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [workflowName, setWorkflowName] = useState("");
   const [steps, setSteps] = useState<WorkflowStep[]>([]);
@@ -147,8 +148,16 @@ export default function WorkflowBuilderPage(): JSX.Element {
 
     try {
       const result = await gaiaMutation.mutateAsync({
-        message: `Parse the following workflow description into a JSON array of steps. Each step must have: name (string), eventType (string, one of: intake, routing, execution, ai_call, report, notification, completion), runtime (one of: make, n8n, custom, manual), and description (string, 1 sentence). Also extract a workflowName (string). Respond ONLY with valid JSON in this format: {"workflowName":"...","steps":[{"name":"...","eventType":"...","runtime":"...","description":"..."}]}.\n\nWorkflow description: "${prompt.trim()}"`,
-        pageContext: "workflow-builder",
+        messages: [
+          {
+            role: "system" as const,
+            content: "You are a workflow architect. Parse workflow descriptions into structured JSON. Respond ONLY with valid JSON — no markdown, no explanation.",
+          },
+          {
+            role: "user" as const,
+            content: `Parse the following workflow description into a JSON array of steps. Each step must have: name (string), eventType (string, one of: intake, routing, execution, ai_call, report, notification, completion), runtime (one of: make, n8n, custom, manual), and description (string, 1 sentence). Also extract a workflowName (string). Respond ONLY with valid JSON in this format: {"workflowName":"...","steps":[{"name":"...","eventType":"...","runtime":"...","description":"..."}]}.\n\nWorkflow description: "${prompt.trim()}"`,
+          },
+        ],
       });
 
       // Try to parse the JSON from the response
@@ -226,8 +235,9 @@ export default function WorkflowBuilderPage(): JSX.Element {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
       <div className="hidden md:flex"><Sidebar /></div>
+      <MobileSidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <TopBar title="Workflow Builder" />
+        <TopBar title="Workflow Builder" onMobileMenuOpen={() => setMobileNavOpen(true)} />
         <main style={{ flex: 1, overflowY: "auto", padding: "var(--space-6)" }}>
           <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
 

@@ -38,8 +38,13 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
-  // Health check — used by Render to determine instance readiness
-  // Returns per-service status so ops teams can diagnose partial outages.
+  // Lightweight health check — always 200 so Render marks the instance ready
+  // regardless of whether optional services (Supabase, Airtable, etc.) are configured.
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ ok: true, ts: new Date().toISOString() });
+  });
+
+  // Detailed service-status check — returns per-service health for ops dashboards.
   app.get("/health", async (_req, res) => {
     const ts = new Date().toISOString();
 
