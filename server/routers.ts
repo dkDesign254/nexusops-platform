@@ -9,6 +9,7 @@ import { intelligenceRouter } from "./routers/intelligence";
 import { syncRouter } from "./routers/sync";
 import { gaiaRouter } from "./routers/gaia";
 import { billingRouter } from "./routers/billing";
+import { auditRouter } from "./routers/audit";
 import { z } from "zod";
 import { countUsers, getDb, getUserByOpenId, upsertUser } from "./db";
 import { createSessionToken } from "./_core/sdk";
@@ -132,6 +133,7 @@ export const appRouter = router({
   sync: syncRouter,
   gaia: gaiaRouter,
   billing: billingRouter,
+  audit: auditRouter,
 });
 
 export type AppRouter = typeof appRouter;
