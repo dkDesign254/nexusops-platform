@@ -336,7 +336,13 @@ function AppSidebar() {
                     <SidebarMenuButton
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
-                      className={`h-9 rounded-xl px-3 ${isPrimaryAction ? "bg-primary text-white hover:opacity-90" : ""}`}
+                      className={`h-9 rounded-xl px-3 transition-all ${
+                        isPrimaryAction
+                          ? "bg-primary text-white hover:opacity-90"
+                          : isActive
+                          ? "bg-primary/12 border border-primary/25 shadow-sm"
+                          : "hover:bg-accent/70"
+                      }`}
                     >
                       <item.icon
                         className={`h-4 w-4 shrink-0 ${
@@ -352,9 +358,9 @@ function AppSidebar() {
                       <span
                         className={
                           isPrimaryAction
-                            ? "text-white font-medium"
+                            ? "text-white font-semibold"
                             : isActive
-                            ? "text-foreground font-medium"
+                            ? "text-primary font-semibold"
                             : "text-muted-foreground"
                         }
                       >
@@ -405,7 +411,11 @@ function AppSidebar() {
         {!isCollapsed ? (
           <button
             onClick={() => setLocation("/help")}
-            className="w-full rounded-2xl border border-border/70 bg-gradient-to-br from-background to-muted/30 px-4 py-3 text-left hover:border-primary/30 hover:bg-accent/40 transition-colors shadow-sm"
+            className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors shadow-sm ${
+              location === "/help"
+                ? "border-primary/30 bg-primary/10"
+                : "border-border/70 bg-gradient-to-br from-background to-muted/30 hover:border-primary/30 hover:bg-accent/40"
+            }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>

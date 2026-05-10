@@ -71,9 +71,18 @@ export default function HelpPage() {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState("");
   const [context, setContext] = useState<ExplainContext>("overview");
   const [assistantPrompt, setAssistantPrompt] = useState("");
+  const [explainStatusFilter, setExplainStatusFilter] = useState<string>("all");
 
   const { data: workflows = [] } = trpc.airtable.workflows.useQuery();
   const explainWorkflow = trpc.intelligence.explainWorkflow.useMutation();
+
+  const filteredWorkflows = useMemo(
+    () =>
+      explainStatusFilter === "all"
+        ? workflows
+        : workflows.filter((w) => w.status?.toLowerCase() === explainStatusFilter),
+    [workflows, explainStatusFilter]
+  );
 
   const selectedWorkflow = useMemo(
     () => workflows.find((workflow) => workflow.recordId === selectedWorkflowId),
@@ -107,6 +116,21 @@ export default function HelpPage() {
 
     if (text.includes("create") || text.includes("new workflow") || text.includes("build workflow") || text.includes("automation")) {
       setLocation("/workflows/new");
+      return;
+    }
+
+    if (text.includes("failed") || text.includes("failures")) {
+      setLocation("/logs?status=failed");
+      return;
+    }
+
+    if (text.includes("pending")) {
+      setLocation("/logs?status=pending");
+      return;
+    }
+
+    if (text.includes("completed") || text.includes("successful")) {
+      setLocation("/logs?status=completed");
       return;
     }
 
@@ -196,7 +220,7 @@ export default function HelpPage() {
               <SuggestionChip label="Help me create a workflow" onClick={() => loadPrompt("Help me create a workflow")} />
               <SuggestionChip label="Show Make workflows" onClick={() => loadPrompt("Show Make workflows")} />
               <SuggestionChip label="Show n8n workflows" onClick={() => loadPrompt("Show n8n workflows")} />
-              <SuggestionChip label="Show me failed workflows" onClick={() => loadPrompt("Show me failed workflows")} />
+              <SuggestionChip label="Show me failed workflows" onClick={() => { setAssistantPrompt("Show me failed workflows"); setLocation("/logs?status=failed"); }} />
               <SuggestionChip label="Explain AI logs" onClick={() => loadPrompt("Explain AI logs")} />
             </div>
           </div>
@@ -242,12 +266,22 @@ export default function HelpPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.9fr_auto] gap-3 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[0.7fr_1.2fr_0.9fr_auto] gap-3 mb-4">
+            <div>
+              <label className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground font-semibold mb-1.5 block">Filter by status</label>
+              <select value={explainStatusFilter} onChange={(event) => { setExplainStatusFilter(event.target.value); setSelectedWorkflowId(""); }} className="w-full h-10 rounded-xl border border-border bg-background/50 text-sm px-3 text-foreground outline-none">
+                <option value="all">All statuses</option>
+                <option value="failed">Failed</option>
+                <option value="running">Running</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
             <div>
               <label className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground font-semibold mb-1.5 block">Workflow</label>
               <select value={selectedWorkflowId} onChange={(event) => setSelectedWorkflowId(event.target.value)} className="w-full h-10 rounded-xl border border-border bg-background/50 text-sm px-3 text-foreground outline-none">
                 <option value="">Select a workflow…</option>
-                {workflows.map((workflow) => (
+                {filteredWorkflows.map((workflow) => (
                   <option key={workflow.recordId} value={workflow.recordId}>{workflow.workflowId} — {workflow.name}</option>
                 ))}
               </select>

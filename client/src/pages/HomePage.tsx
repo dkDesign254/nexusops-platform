@@ -134,22 +134,61 @@ export default function HomePage() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-border/70 bg-muted/10 p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+              <div
+                role="button"
+                onClick={() => setLocation("/logs")}
+                className="rounded-2xl border border-border/70 bg-muted/10 p-4 hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-pointer"
+              >
+                <Activity className="w-4 h-4 text-primary mb-2" />
                 <p className="text-sm font-semibold text-foreground">Monitor</p>
                 <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                   Watch workflows, AI decisions, runtime events, and health signals in one place.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-border/70 bg-muted/10 p-4">
-                <p className="text-sm font-semibold text-foreground">Understand</p>
+              <div
+                role="button"
+                onClick={() => setLocation("/workflows/new")}
+                className="rounded-2xl border border-border/70 bg-muted/10 p-4 hover:border-blue-500/30 hover:bg-blue-500/5 transition-colors cursor-pointer"
+              >
+                <Zap className="w-4 h-4 text-blue-400 mb-2" />
+                <p className="text-sm font-semibold text-foreground">Build</p>
                 <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                  Use guided help, logs, and workflow explanations to reduce tool complexity.
+                  Create automations on Make or n8n with guided setup and AI configuration.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-border/70 bg-muted/10 p-4">
+              <div
+                role="button"
+                onClick={() => setLocation("/signin")}
+                className="rounded-2xl border border-border/70 bg-muted/10 p-4 hover:border-violet-500/30 hover:bg-violet-500/5 transition-colors cursor-pointer"
+              >
+                <Shield className="w-4 h-4 text-violet-400 mb-2" />
+                <p className="text-sm font-semibold text-foreground">Govern</p>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                  Apply role-based controls, access reviews, and audit-ready governance policies.
+                </p>
+              </div>
+
+              <div
+                role="button"
+                onClick={() => setLocation("/help")}
+                className="rounded-2xl border border-border/70 bg-muted/10 p-4 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors cursor-pointer"
+              >
+                <Bot className="w-4 h-4 text-emerald-400 mb-2" />
+                <p className="text-sm font-semibold text-foreground">Understand</p>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                  Use GAIA AI, logs, and workflow explanations to reduce complexity and confusion.
+                </p>
+              </div>
+
+              <div
+                role="button"
+                onClick={() => setLocation("/signin")}
+                className="rounded-2xl border border-border/70 bg-muted/10 p-4 hover:border-amber-500/30 hover:bg-amber-500/5 transition-colors cursor-pointer col-span-2 sm:col-span-1"
+              >
+                <BarChart3 className="w-4 h-4 text-amber-400 mb-2" />
                 <p className="text-sm font-semibold text-foreground">Improve</p>
                 <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                   Turn workflow activity into reports, performance insights, and operational action.

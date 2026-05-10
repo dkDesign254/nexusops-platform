@@ -91,6 +91,7 @@ export const AI_Logs = pgTable("AI_Logs", {
   tokensUsed: integer("tokens_used"),
   confidence: integer("confidence"),   // 0–100
   flagged: boolean("flagged").default(false),
+  payloadHash: varchar("payload_hash", { length: 64 }), // SHA-256(prompt || response) — tamper detection
   timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
 });
 

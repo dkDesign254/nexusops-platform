@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -166,7 +167,10 @@ export async function countFailedLogs(workflowId: string) {
 export async function createAILog(data: InsertAILog) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.insert(AI_Logs).values(data);
+  const payloadHash = createHash("sha256")
+    .update(data.prompt + data.response)
+    .digest("hex");
+  await db.insert(AI_Logs).values({ ...data, payloadHash });
 }
 
 export async function listAILogsByWorkflow(workflowId: string) {
