@@ -15,18 +15,25 @@ export function CTABanner(): JSX.Element {
           ⬡ Free to start. No credit card.
         </div>
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem, 5vw, 3rem)", fontWeight: 800, color: "var(--color-text-primary)", letterSpacing: "-0.03em", marginBottom: "var(--space-4)" }}>
-          Start governing your AI workflows today.
+          Start governing your AI workflows{" "}
+          <span className="text-gradient">today.</span>
         </h2>
-        <p style={{ fontSize: "1.0625rem", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)" }}>
+        <p style={{ fontSize: "1.0625rem", color: "var(--color-text-secondary)", marginBottom: "var(--space-8)", lineHeight: 1.7 }}>
           Free to start. No credit card. No runtime lock-in.
         </p>
         <div style={{ display: "flex", gap: "var(--space-4)", justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => setLocation("/auth?mode=signup")}
-            style={{ background: "var(--color-brand)", border: "none", borderRadius: "var(--radius-md)", padding: "0.875rem 2rem", fontSize: "1rem", fontWeight: 700, color: "var(--color-text-inverse)", cursor: "pointer", fontFamily: "var(--font-display)", boxShadow: "var(--shadow-brand)" }}>
+          <button
+            onClick={() => setLocation("/auth?mode=signup")}
+            className="btn-primary shimmer-border"
+            style={{ border: "none", padding: "0.875rem 2.25rem", fontSize: "1rem", fontWeight: 700, cursor: "pointer" }}
+          >
             Create your account
           </button>
-          <button onClick={() => setLocation("/docs")}
-            style={{ background: "transparent", border: "1px solid var(--color-border-default)", borderRadius: "var(--radius-md)", padding: "0.875rem 2rem", fontSize: "1rem", color: "var(--color-text-primary)", cursor: "pointer", fontFamily: "var(--font-display)" }}>
+          <button
+            onClick={() => setLocation("/docs")}
+            className="btn-ghost"
+            style={{ padding: "0.875rem 2rem", fontSize: "1rem", cursor: "pointer" }}
+          >
             Read the docs
           </button>
         </div>

@@ -305,14 +305,26 @@ code, pre, .font-mono, .code-inline, .code-block {
 
 .card-hover {
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition:
+    transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 220ms ease,
+    border-color 220ms ease;
   border: 1px solid var(--color-border-default);
+  will-change: transform;
 }
 
 .card-hover:hover {
+  transform: translateY(-5px);
+  border-color: rgba(14, 164, 114, 0.4);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(14, 164, 114, 0.08),
+    var(--shadow-brand);
+}
+
+.card-hover:active {
   transform: translateY(-2px);
-  border-color: rgba(14, 164, 114, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), var(--shadow-brand);
+  transition-duration: 80ms;
 }
 
 .action-highlight {
@@ -399,14 +411,23 @@ code, pre, .font-mono, .code-inline, .code-block {
   padding: 0.6rem 1rem;
   font-weight: 600;
   box-shadow: var(--shadow-brand);
-  transition: all var(--transition-base);
+  transition:
+    transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 150ms ease,
+    box-shadow 150ms ease;
   font-family: var(--font-display);
+  will-change: transform;
 }
 
 .btn-primary:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   background: var(--color-brand-light);
-  box-shadow: 0 0 32px rgba(14, 164, 114, 0.35);
+  box-shadow: 0 0 40px rgba(14, 164, 114, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 60ms;
 }
 
 .btn-ghost {
@@ -422,6 +443,11 @@ code, pre, .font-mono, .code-inline, .code-block {
 .btn-ghost:hover {
   background: var(--color-bg-hover);
   border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+.btn-ghost:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* ================================================================
@@ -515,4 +541,189 @@ code, pre, .font-mono, .code-inline, .code-block {
 
 *::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-tertiary);
+}
+
+/* ================================================================
+   INPUT / FORM FOCUS STATES
+   ================================================================ */
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: rgba(14, 164, 114, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(14, 164, 114, 0.15) !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* ================================================================
+   SCROLL-REVEAL ANIMATIONS
+   ================================================================ */
+
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fade-in-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-in-up.delay-1 { transition-delay: 80ms; }
+.fade-in-up.delay-2 { transition-delay: 160ms; }
+.fade-in-up.delay-3 { transition-delay: 240ms; }
+.fade-in-up.delay-4 { transition-delay: 320ms; }
+.fade-in-up.delay-5 { transition-delay: 400ms; }
+.fade-in-up.delay-6 { transition-delay: 480ms; }
+
+/* ================================================================
+   TEXT GRADIENT UTILITIES
+   ================================================================ */
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-brand-light) 0%, #5eead4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-warm {
+  background: linear-gradient(135deg, var(--color-brand-light) 0%, #a3e635 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ================================================================
+   LANDING PAGE AMBIENT GLOW
+   ================================================================ */
+
+.hero-ambient {
+  position: relative;
+}
+
+.hero-ambient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(14, 164, 114, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 80% 20%, rgba(14, 164, 114, 0.05) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-ambient > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ================================================================
+   STAT / METRIC NUMBER DISPLAY
+   ================================================================ */
+
+.stat-number {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--color-text-primary);
+  animation: statReveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes statReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ================================================================
+   TABLE ROW HOVER
+   ================================================================ */
+
+.table-row-hover {
+  transition: background 120ms ease;
+}
+
+.table-row-hover:hover {
+  background: rgba(14, 164, 114, 0.04) !important;
+}
+
+/* ================================================================
+   GLOW RING — focus/active highlight for interactive tiles
+   ================================================================ */
+
+.glow-ring {
+  box-shadow: 0 0 0 0 rgba(14, 164, 114, 0);
+  transition: box-shadow 200ms ease;
+}
+
+.glow-ring:focus-visible,
+.glow-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14, 164, 114, 0.3);
+}
+
+/* ================================================================
+   PAGE ENTRY ANIMATION
+   ================================================================ */
+
+.page-enter {
+  animation: pageEnter 0.28s ease forwards;
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ================================================================
+   FEATURE CARD INNER ICON GLOW
+   ================================================================ */
+
+.icon-glow {
+  transition: filter 220ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card-hover:hover .icon-glow {
+  filter: drop-shadow(0 0 8px rgba(14, 164, 114, 0.6));
+  transform: scale(1.12);
+}
+
+/* ================================================================
+   PULSING STATUS DOT
+   ================================================================ */
+
+.status-dot-running {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-status-running);
+  animation: statusPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.8); }
+}
+
+/* ================================================================
+   SHIMMER BORDER — CTA highlight
+   ================================================================ */
+
+@keyframes shimmerBorder {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(14, 164, 114, 0.25), 0 0 20px rgba(14, 164, 114, 0.08); }
+  50%       { box-shadow: 0 0 0 1px rgba(14, 164, 114, 0.55), 0 0 32px rgba(14, 164, 114, 0.18); }
+}
+
+.shimmer-border {
+  animation: shimmerBorder 3.5s ease-in-out infinite;
 }

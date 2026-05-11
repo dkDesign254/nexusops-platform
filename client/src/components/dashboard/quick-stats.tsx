@@ -13,15 +13,18 @@ export interface QuickStatsProps {
   avgDurationMins: number | null;
 }
 
-function StatTile({ label, value, accent }: { label: string; value: string; accent: string }): JSX.Element {
+function StatTile({ label, value, accent, isZero }: { label: string; value: string; accent: string; isZero?: boolean }): JSX.Element {
   return (
-    <div style={{ background: "var(--color-bg-surface)", border: `1px solid ${accent}20`, borderRadius: "var(--radius-lg)", padding: "var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-      <p style={{ fontSize: "0.75rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500 }}>
+    <div className="card-hover" style={{ background: "var(--color-bg-surface)", border: `1px solid ${accent}20`, borderRadius: "var(--radius-lg)", padding: "var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <p style={{ fontSize: "0.6875rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>
         {label}
       </p>
-      <p style={{ fontFamily: "var(--font-display)", fontSize: "1.75rem", fontWeight: 800, color: accent, letterSpacing: "-0.03em", lineHeight: 1 }}>
+      <p className="stat-number" style={{ fontSize: "1.875rem", color: isZero ? "var(--color-text-tertiary)" : accent }}>
         {value}
       </p>
+      {isZero && (
+        <p style={{ fontSize: "0.6875rem", color: "var(--color-text-tertiary)", marginTop: 2 }}>No data yet</p>
+      )}
     </div>
   );
 }
@@ -30,9 +33,9 @@ export function QuickStats({ aiCallsThisWeek, reportsPendingApproval, avgDuratio
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--space-4)" }}
       className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <StatTile label="AI calls this week" value={String(aiCallsThisWeek)} accent="#a78bfa" />
-      <StatTile label="Reports pending approval" value={String(reportsPendingApproval)} accent="var(--color-status-running)" />
-      <StatTile label="Avg execution duration" value={avgDurationMins != null ? `${avgDurationMins.toFixed(1)}m` : "—"} accent="var(--color-brand)" />
+      <StatTile label="AI calls this week" value={aiCallsThisWeek === 0 ? "0" : String(aiCallsThisWeek)} isZero={aiCallsThisWeek === 0} accent="#a78bfa" />
+      <StatTile label="Reports pending" value={reportsPendingApproval === 0 ? "0" : String(reportsPendingApproval)} isZero={reportsPendingApproval === 0} accent="var(--color-status-running)" />
+      <StatTile label="Avg execution" value={avgDurationMins != null ? `${avgDurationMins.toFixed(1)}m` : "—"} isZero={avgDurationMins == null} accent="var(--color-brand)" />
     </div>
   );
 }

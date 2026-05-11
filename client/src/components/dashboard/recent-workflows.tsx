@@ -33,7 +33,8 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
 function StatusBadge({ status }: { status: string }): JSX.Element {
   const style = STATUS_STYLE[status] ?? STATUS_STYLE["Pending"];
   return (
-    <span style={{ fontSize: "0.6875rem", padding: "0.2rem 0.55rem", borderRadius: "var(--radius-full)", background: style.bg, color: style.color, fontFamily: "var(--font-body)", fontWeight: 500, whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontSize: "0.6875rem", padding: "0.2rem 0.6rem", borderRadius: "var(--radius-full)", background: style.bg, color: style.color, fontFamily: "var(--font-display)", fontWeight: 600, whiteSpace: "nowrap", letterSpacing: "0.02em" }}>
+      {status === "Running" && <span className="status-dot-running" />}
       {status}
     </span>
   );
@@ -90,9 +91,8 @@ export function RecentWorkflows({ workflows, loading = false }: RecentWorkflowsP
               )
               : workflows.map((wf) => (
                 <tr key={wf.id}
-                  style={{ borderBottom: "1px solid var(--color-border-subtle)", transition: "background var(--transition-fast)" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-hover)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                  className="table-row-hover"
+                  style={{ borderBottom: "1px solid var(--color-border-subtle)" }}>
                   <td style={{ padding: "0.75rem var(--space-4)", fontFamily: "var(--font-body)", fontSize: "0.75rem", color: "var(--color-text-tertiary)" }}>{wf.workflowId}</td>
                   <td style={{ padding: "0.75rem var(--space-4)", fontSize: "0.875rem", color: "var(--color-text-primary)", fontFamily: "var(--font-display)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wf.workflowName}</td>
                   <td style={{ padding: "0.75rem var(--space-4)" }}>
