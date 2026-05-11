@@ -492,15 +492,15 @@ export default function AgentsPage(): JSX.Element {
             </div>
 
             {/* Summary cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "var(--space-4)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--space-4)" }}>
               {[
-                { label: "Total Agents", value: agents.length, color: undefined },
-                { label: "Active", value: activeCount, color: "#4ade80" },
+                { label: "Total Agents", value: String(agents.length), color: undefined },
+                { label: "Active", value: String(activeCount), color: "#4ade80" },
                 { label: "Avg Governance Score", value: `${avgScore}/100`, color: avgScore >= 80 ? "#4ade80" : avgScore >= 60 ? "#facc15" : "#f87171" },
               ].map(({ label, value, color }) => (
-                <div key={label} style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--space-4)" }}>
-                  <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-                  <p style={{ margin: "0.2rem 0 0", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.5rem", color: color ?? "var(--color-text-primary)" }}>{value}</p>
+                <div key={label} style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--space-5)", minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>{label}</p>
+                  <p style={{ margin: "0.35rem 0 0", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.75rem", color: color ?? "var(--color-text-primary)", letterSpacing: "-0.03em", lineHeight: 1 }}>{value}</p>
                 </div>
               ))}
             </div>

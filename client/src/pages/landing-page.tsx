@@ -19,7 +19,7 @@ import { Footer } from "@/components/landing/footer";
 
 export default function LandingPage(): JSX.Element {
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-bg-base)", color: "var(--color-text-primary)" }}>
+    <div className="page-enter" style={{ minHeight: "100vh", background: "var(--color-bg-base)", color: "var(--color-text-primary)" }}>
       <NavBar />
       <main>
         <Hero />

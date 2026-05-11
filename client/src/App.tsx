@@ -215,6 +215,14 @@ function Router(): JSX.Element {
           </Suspense>
         </AuthGuard>
       </Route>
+      {/* Legacy alias — /campaign-data → /performance */}
+      <Route path="/campaign-data">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <PerformancePage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
 
       {/* Catch-all */}
       <Route component={NotFoundPage} />

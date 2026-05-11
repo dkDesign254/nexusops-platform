@@ -67,7 +67,7 @@ export function Sidebar({ collapsed = false, onCollapse, mobileOpen = false, onM
         { label: T("nav.billing"), href: "/billing", icon: <CreditCard size={16} /> },
         { label: T("nav.settings"), href: "/settings", icon: <Settings size={16} /> },
         { label: "Admin", href: "/admin", icon: <Shield size={16} /> },
-        { label: "FAQ / Help", href: "/faq", icon: <HelpCircle size={16} /> },
+        { label: "Help & Docs", href: "/gaia", icon: <HelpCircle size={16} /> },
       ],
     },
   ];

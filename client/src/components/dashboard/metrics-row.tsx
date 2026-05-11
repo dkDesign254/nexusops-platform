@@ -39,11 +39,11 @@ function StatCard({ label, value, accent, bg }: StatCardProps): JSX.Element {
   }, [value]);
 
   return (
-    <div style={{ background: bg, border: `1px solid ${accent}25`, borderRadius: "var(--radius-lg)", padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-      <p style={{ fontSize: "0.75rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+    <div className="card-hover" style={{ background: bg, border: `1px solid ${accent}25`, borderRadius: "var(--radius-lg)", padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <p style={{ fontSize: "0.6875rem", color: "var(--color-text-tertiary)", fontFamily: "var(--font-display)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
         {label}
       </p>
-      <p style={{ fontFamily: "var(--font-display)", fontSize: "2rem", fontWeight: 800, color: accent, letterSpacing: "-0.03em", lineHeight: 1 }}>
+      <p className="stat-number" style={{ fontSize: "2.25rem", color: accent }}>
         <span ref={ref}>0</span>
       </p>
     </div>

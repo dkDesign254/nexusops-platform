@@ -16,15 +16,15 @@ interface FeatureCardProps {
 
 function FeatureCard({ icon, title, description, accent }: FeatureCardProps): JSX.Element {
   return (
-    <div className="card-hover" style={{ background: "var(--color-bg-surface)", border: "1px solid var(--color-border-subtle)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", background: `${accent}14`, border: `1px solid ${accent}30`, display: "flex", alignItems: "center", justifyContent: "center", color: accent }}>
+    <div className="card-hover" style={{ background: "var(--color-bg-surface)", borderRadius: "var(--radius-lg)", padding: "var(--space-6)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <div className="icon-glow" style={{ width: 44, height: 44, borderRadius: "var(--radius-md)", background: `${accent}18`, border: `1px solid ${accent}35`, display: "flex", alignItems: "center", justifyContent: "center", color: accent, flexShrink: 0 }}>
         {icon}
       </div>
       <div>
-        <p style={{ fontFamily: "var(--font-display)", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "0.4rem", fontSize: "0.9375rem" }}>
+        <p style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "0.5rem", fontSize: "0.9375rem", letterSpacing: "-0.01em" }}>
           {title}
         </p>
-        <p style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)", lineHeight: 1.65 }}>
+        <p style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)", lineHeight: 1.7 }}>
           {description}
         </p>
       </div>
@@ -78,8 +78,9 @@ export function FeaturesGrid(): JSX.Element {
         <p style={{ fontSize: "0.75rem", color: "var(--color-brand)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-body)", marginBottom: "var(--space-3)" }}>
           Platform capabilities
         </p>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 700, color: "var(--color-text-primary)", letterSpacing: "-0.02em" }}>
-          Everything you need to govern AI at scale
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 800, color: "var(--color-text-primary)", letterSpacing: "-0.03em" }}>
+          Everything you need to{" "}
+          <span className="text-gradient">govern AI at scale</span>
         </h2>
       </div>
 

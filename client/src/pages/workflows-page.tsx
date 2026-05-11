@@ -13,7 +13,7 @@ import { useT } from "@/contexts/LocaleContext";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { WorkflowRow } from "@/components/dashboard/recent-workflows";
-import { RefreshCw, XCircle, Play, Loader2 } from "lucide-react";
+import { RefreshCw, XCircle, Play, Loader2, Search } from "lucide-react";
 
 // ─── Governance Action Bar ─────────────────────────────────────────────────────
 
@@ -137,17 +137,47 @@ function TriggerModal({ onClose, onTriggered }: { onClose: () => void; onTrigger
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
+type StatusFilter = "all" | "Running" | "Pending" | "Completed" | "Failed" | "Cancelled";
+
+const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
+  { label: "All", value: "all" },
+  { label: "Running", value: "Running" },
+  { label: "Pending", value: "Pending" },
+  { label: "Completed", value: "Completed" },
+  { label: "Failed", value: "Failed" },
+  { label: "Cancelled", value: "Cancelled" },
+];
+
+const STATUS_COLOR: Record<string, string> = {
+  Running: "#60a5fa",
+  Pending: "var(--color-text-tertiary)",
+  Completed: "#4ade80",
+  Failed: "#f87171",
+  Cancelled: "#94a3b8",
+};
+
 export default function WorkflowsPage(): JSX.Element {
   const { data, loading, refetch } = useWorkflows();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showTrigger, setShowTrigger] = useState(false);
   const T = useT();
 
   const q = search.toLowerCase();
-  const filtered = data.filter((wf) =>
-    (wf.workflow_name ?? "").toLowerCase().includes(q) ||
-    (wf.workflow_id ?? "").toLowerCase().includes(q)
+  const filtered = data.filter((wf) => {
+    const matchSearch =
+      (wf.workflow_name ?? "").toLowerCase().includes(q) ||
+      (wf.workflow_id ?? "").toLowerCase().includes(q);
+    const matchStatus =
+      statusFilter === "all" || (wf.status ?? "") === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  // Count per status for filter badges
+  const counts = STATUS_FILTERS.slice(1).reduce<Record<string, number>>(
+    (acc, f) => ({ ...acc, [f.value]: data.filter((w) => (w.status ?? "") === f.value).length }),
+    {}
   );
 
   const rows: WorkflowRow[] = filtered.map((wf) => ({
@@ -171,19 +201,51 @@ export default function WorkflowsPage(): JSX.Element {
 
             {/* Toolbar */}
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={T("search.workflows")}
-                style={{ padding: "0.6rem var(--space-4)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-default)", background: "var(--color-bg-elevated)", color: "var(--color-text-primary)", fontFamily: "var(--font-display)", fontSize: "0.875rem", flex: "1 1 240px", minWidth: 0, outline: "none" }}
-              />
+              <div style={{ position: "relative", flex: "1 1 240px", minWidth: 0 }}>
+                <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-tertiary)", pointerEvents: "none" }} />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={T("search.workflows")}
+                  style={{ width: "100%", padding: "0.6rem 0.75rem 0.6rem 2rem", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-default)", background: "var(--color-bg-elevated)", color: "var(--color-text-primary)", fontFamily: "var(--font-display)", fontSize: "0.875rem", outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
               <button
                 onClick={() => setShowTrigger(true)}
-                style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.6rem 1.125rem", background: "var(--color-brand)", border: "none", borderRadius: "var(--radius-md)", color: "var(--color-bg-base)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", flexShrink: 0 }}
+                style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.6rem 1.125rem", background: "var(--color-brand)", border: "none", borderRadius: "var(--radius-md)", color: "#000", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", flexShrink: 0 }}
               >
                 <Play size={14} />
                 Trigger Run
               </button>
+            </div>
+
+            {/* Status filter tabs */}
+            <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap", alignItems: "center" }}>
+              {STATUS_FILTERS.map(({ label, value }) => {
+                const isActive = statusFilter === value;
+                const count = value === "all" ? data.length : (counts[value] ?? 0);
+                const dotColor = value !== "all" ? (STATUS_COLOR[value] ?? "var(--color-text-tertiary)") : undefined;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setStatusFilter(value)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "0.3rem",
+                      padding: "0.3rem 0.625rem",
+                      borderRadius: "var(--radius-sm)",
+                      border: `1px solid ${isActive ? "var(--color-brand)" : "var(--color-border-subtle)"}`,
+                      background: isActive ? "rgba(14,164,114,0.08)" : "transparent",
+                      color: isActive ? "var(--color-brand)" : "var(--color-text-tertiary)",
+                      fontFamily: "var(--font-display)", fontSize: "0.75rem", fontWeight: isActive ? 700 : 500,
+                      cursor: "pointer", transition: "all 0.15s",
+                    }}
+                  >
+                    {dotColor && <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />}
+                    {label}
+                    <span style={{ fontSize: "0.625rem", fontWeight: 600, opacity: 0.7 }}>{count}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Governance actions alongside each workflow */}
