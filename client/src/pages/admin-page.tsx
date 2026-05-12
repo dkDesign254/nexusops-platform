@@ -4,6 +4,11 @@
  *
  * Full operator dashboard covering: system health, integration status,
  * user management, Airtable sync, seed data, audit events, and metrics.
+ *
+ * Role gate: reads profile.role from Supabase profiles table via useProfile().
+ * Only users with role === 'admin' can access this page.
+ * All others see an "Admin access required" message showing their actual role
+ * (Admin / Member / Viewer) rather than the raw Supabase auth role string.
  */
 import { useState } from "react";
 import {
@@ -17,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import { useWorkflows } from "@/hooks/use-workflows";
 import { useExecutionLogs } from "@/hooks/use-execution-logs";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profile";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -134,6 +140,7 @@ function MetricCard({ label, value, sub, color }: {
 export default function AdminPage(): JSX.Element {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { user } = useAuth();
+  const { profile } = useProfile();
   const { data: workflows, loading: wfLoading } = useWorkflows();
   const { data: logs } = useExecutionLogs();
 
@@ -222,8 +229,15 @@ export default function AdminPage(): JSX.Element {
     },
   ];
 
+  // Derive human-readable role label from profiles table
+  const roleLabel =
+    profile?.role === "admin" ? "Admin" :
+    profile?.role === "viewer" ? "Viewer" :
+    "Member";
+
   // Guard: non-admin users see access denied
-  if (user && user.role !== "admin") {
+  // Waits for profile to load before blocking (avoids flash on slow connections)
+  if (user && profile && profile.role !== "admin") {
     return (
       <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg-base)" }}>
         <div className="hidden md:flex"><Sidebar /></div>
@@ -237,7 +251,7 @@ export default function AdminPage(): JSX.Element {
                 Admin access required
               </p>
               <p style={{ fontSize: "0.875rem", color: "var(--color-text-tertiary)", marginTop: "0.5rem" }}>
-                Your account role is <strong>{user.role}</strong>. Contact a platform admin for access.
+                Your account role is <strong>{roleLabel}</strong>. Contact a platform admin for access.
               </p>
             </div>
           </main>

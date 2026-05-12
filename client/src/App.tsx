@@ -5,8 +5,8 @@
  * and the wouter client-side router. All authenticated routes are
  * wrapped in AuthGuard which redirects to /auth if no Supabase session.
  *
- * Public routes:  /  and  /auth
- * Protected routes: /dashboard and everything else
+ * Public routes:  /  and  /auth  and  /book-a-demo
+ * Protected routes: /home, /dashboard and everything else
  */
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,6 +41,9 @@ const AgentsPage = lazy(() => import("./pages/agents-page"));
 const FAQPage = lazy(() => import("./pages/faq-page"));
 const WorkflowBuilderPage = lazy(() => import("./pages/workflow-builder-page"));
 const GovernancePage = lazy(() => import("./pages/governance-page"));
+const InternalHomePage = lazy(() => import("./pages/home-page"));
+const TemplatesPage = lazy(() => import("./pages/templates-page"));
+const BookADemoPage = lazy(() => import("./pages/book-a-demo-page"));
 
 /** Suspense fallback used while lazy protected pages are loading */
 function PageLoader(): JSX.Element {
@@ -85,8 +88,27 @@ function Router(): JSX.Element {
       {/* Public */}
       <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/book-a-demo">
+        <Suspense fallback={<PageLoader />}>
+          <BookADemoPage />
+        </Suspense>
+      </Route>
 
       {/* Protected */}
+      <Route path="/home">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <InternalHomePage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
+      <Route path="/templates">
+        <AuthGuard>
+          <Suspense fallback={<PageLoader />}>
+            <TemplatesPage />
+          </Suspense>
+        </AuthGuard>
+      </Route>
       <Route path="/dashboard">
         <AuthGuard>
           <Suspense fallback={<PageLoader />}>
@@ -235,7 +257,7 @@ function AppShell(): JSX.Element {
   const isDark = theme === "dark";
   const [gaiaOpen, setGaiaOpen] = useState(false);
   const [location] = useLocation();
-  const isPublicRoute = location === "/" || location === "/auth";
+  const isPublicRoute = location === "/" || location === "/auth" || location === "/book-a-demo";
   const isDashboard = location === "/dashboard";
 
   // Show onboarding tour on first visit to /dashboard

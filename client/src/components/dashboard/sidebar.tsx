@@ -2,16 +2,29 @@
  * NexusOps — Sidebar
  *
  * Collapsible navigation sidebar for the authenticated dashboard.
- * Organised into four sections: Monitor, Audit, Output, Settings.
+ * Organised into sections: Monitor, Audit, Output, Governance, Account.
  * Active route highlighted with brand accent + left border.
  * Labels update when the user switches language via LocaleContext.
+ *
+ * Collapse state persists in localStorage ('nexusops_sidebar_collapsed').
+ * Logo click always navigates to /home — never triggers logout.
+ * Sign-out is only in the TopBar user avatar dropdown.
  */
 import type { ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Logo } from "@/components/ui/logo";
-import { LayoutDashboard, Workflow, ScrollText, Bot, FileText, BarChart3, Settings, Users, Plug, Key, ChevronLeft, ChevronRight, Sparkles, CreditCard, Link2, Shield, SlidersHorizontal, Wand2, ShieldCheck, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Workflow, ScrollText, Bot, FileText, BarChart3, Settings, ChevronLeft, ChevronRight, Sparkles, CreditCard, Link2, Shield, SlidersHorizontal, Wand2, ShieldCheck, HelpCircle, Home } from "lucide-react";
 import { useState } from "react";
 import { useT } from "@/contexts/LocaleContext";
+
+const SIDEBAR_KEY = "nexusops_sidebar_collapsed";
+
+function readSidebarCollapsed(): boolean {
+  try { return localStorage.getItem(SIDEBAR_KEY) === "true"; } catch { return false; }
+}
+function saveSidebarCollapsed(v: boolean): void {
+  try { localStorage.setItem(SIDEBAR_KEY, String(v)); } catch {}
+}
 
 export interface SidebarProps {
   collapsed?: boolean;
@@ -20,17 +33,32 @@ export interface SidebarProps {
   onMobileClose?: () => void;
 }
 
-export function Sidebar({ collapsed = false, onCollapse, mobileOpen = false, onMobileClose }: SidebarProps): JSX.Element {
+export function Sidebar({ collapsed, onCollapse, mobileOpen = false, onMobileClose }: SidebarProps): JSX.Element {
   const [location, setLocation] = useLocation();
-  const [internalCollapsed, setInternalCollapsed] = useState(collapsed);
-  const isCollapsed = onCollapse ? collapsed : internalCollapsed;
+  const [internalCollapsed, setInternalCollapsed] = useState(() =>
+    collapsed !== undefined ? collapsed : readSidebarCollapsed()
+  );
+  const isCollapsed = onCollapse ? (collapsed ?? internalCollapsed) : internalCollapsed;
+
   const toggle = () => {
-    if (onCollapse) onCollapse(!collapsed);
-    else setInternalCollapsed(!internalCollapsed);
+    const next = !isCollapsed;
+    saveSidebarCollapsed(next);
+    if (onCollapse) onCollapse(next);
+    else setInternalCollapsed(next);
   };
+
+  // Logo click → /home always (never logout)
+  const goHome = () => setLocation("/home");
+
   const T = useT();
 
   const NAV = [
+    {
+      title: "",
+      items: [
+        { label: "Home", href: "/home", icon: <Home size={16} /> },
+      ],
+    },
     {
       title: T("nav.monitor"),
       items: [
@@ -86,7 +114,7 @@ export function Sidebar({ collapsed = false, onCollapse, mobileOpen = false, onM
         position: "relative",
       }}
     >
-      {/* Logo area */}
+      {/* Logo area — clicking always goes to /home */}
       <div
         style={{
           padding: "var(--space-5) var(--space-4)",
@@ -96,11 +124,15 @@ export function Sidebar({ collapsed = false, onCollapse, mobileOpen = false, onM
           justifyContent: isCollapsed ? "center" : "space-between",
         }}
       >
-        {!isCollapsed && <Logo size="sm" />}
+        {!isCollapsed && (
+          <button onClick={goHome} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }} title="Home">
+            <Logo size="sm" />
+          </button>
+        )}
         {isCollapsed && (
-          <div style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={goHome} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }} title="Home">
             <span style={{ color: "var(--color-brand)", fontSize: "1rem" }}>⬡</span>
-          </div>
+          </button>
         )}
         <button
           onClick={toggle}

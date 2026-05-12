@@ -31,4 +31,17 @@ export const ENV = {
 
   // Anthropic (optional — enables real Claude responses in GAIA panel)
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
+
+  // PayPal (client ID exposed via VITE_ prefix; secret kept server-side only)
+  paypalClientId:     process.env.PAYPAL_CLIENT_ID     ?? "",
+  paypalClientSecret: process.env.PAYPAL_CLIENT_SECRET ?? "",
+  paypalSandbox: process.env.PAYPAL_SANDBOX !== "false", // default: sandbox mode
+
+  // M-Pesa / Safaricom Daraja (Kenya STK Push)
+  mpesaConsumerKey:    process.env.MPESA_CONSUMER_KEY    ?? "",
+  mpesaConsumerSecret: process.env.MPESA_CONSUMER_SECRET ?? "",
+  mpesaBusinessShortcode: process.env.MPESA_BUSINESS_SHORTCODE ?? "",
+  mpesaPasskey:        process.env.MPESA_PASSKEY         ?? "",
+  mpesaCallbackUrl:    process.env.MPESA_CALLBACK_URL    ?? "",
+  mpesaSandbox: process.env.MPESA_SANDBOX !== "false",   // default: sandbox mode
 };
