@@ -9,6 +9,7 @@ import { intelligenceRouter } from "./routers/intelligence";
 import { syncRouter } from "./routers/sync";
 import { gaiaRouter } from "./routers/gaia";
 import { billingRouter } from "./routers/billing";
+import { mpesaRouter } from "./routers/mpesa";
 import { auditRouter } from "./routers/audit";
 import { z } from "zod";
 import { countUsers, getDb, getUserByOpenId, upsertUser } from "./db";
@@ -133,6 +134,7 @@ export const appRouter = router({
   sync: syncRouter,
   gaia: gaiaRouter,
   billing: billingRouter,
+  mpesa: mpesaRouter,
   audit: auditRouter,
 });
 

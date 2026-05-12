@@ -22,11 +22,16 @@ const BASE_URL = `https://api.airtable.com/v0/${BASE}`;
 // ─── Table IDs ────────────────────────────────────────────────────────────────
 
 export const TABLE_IDS = {
-  platformConfig:    "tbl3JaS3SAuDElVjS",
-  translations:      "tbl4qXtm02u7fBTjj",
-  pricingPlans:      "tblzpl7KOGfcyQAOX",
+  platformConfig:      "tbl3JaS3SAuDElVjS",
+  translations:        "tbl4qXtm02u7fBTjj",
+  pricingPlans:        "tblzpl7KOGfcyQAOX",
   integrationRegistry: "tblVmcaXwPPrlpvAO",
-  tourContent:       "tblM4Gl3WKHAwstYq",
+  tourContent:         "tblM4Gl3WKHAwstYq",
+  workspaces:          "tblvnclbTSib7eNly",
+  workflowTemplates:   "tblXTEMcPvLk3rcIN",
+  demoBookings:        "tblK6Iqa4055Og1H4",
+  // Core governance tables (Workflow, ExecutionLog, AILog, PerformanceData, FinalReport)
+  // are read from Supabase (server-synced) — not directly from Airtable in the browser
 } as const;
 
 // ─── Generic types ────────────────────────────────────────────────────────────
@@ -332,4 +337,230 @@ export async function fetchPlatformConfig(category?: string): Promise<ConfigItem
     value: r.fields["Value"] ?? "",
     category: r.fields["Category"] ?? "",
   }));
+}
+
+// ─── Translations ─────────────────────────────────────────────────────────────
+
+export interface Translation {
+  recordId: string;
+  key: string;
+  languageCode: string;
+  text: string;
+  section: string;
+}
+
+interface TranslationFields {
+  "Translation Key"?: string;
+  "Language Code"?:  string;
+  "Translated Text"?: string;
+  "Section"?: string;
+}
+
+/**
+ * Fetches translations for a given language code.
+ * Falls back to English if key is missing in the requested language.
+ * @param languageCode - e.g. "en" | "fr" | "de" | "ar"
+ * @param section - Optional section filter e.g. "landing" | "dashboard"
+ */
+export async function fetchTranslations(
+  languageCode: string,
+  section?: string,
+): Promise<Translation[]> {
+  let formula = `{Language Code} = "${languageCode}"`;
+  if (section) formula = `AND({Language Code} = "${languageCode}", {Section} = "${section}")`;
+
+  const records = await fetchAll<TranslationFields>(TABLE_IDS.translations, {
+    filterByFormula: formula,
+  });
+
+  return records.map((r) => ({
+    recordId: r.id,
+    key: r.fields["Translation Key"] ?? r.id,
+    languageCode: r.fields["Language Code"] ?? languageCode,
+    text: r.fields["Translated Text"] ?? "",
+    section: r.fields["Section"] ?? "",
+  }));
+}
+
+// ─── Workspaces ───────────────────────────────────────────────────────────────
+
+export interface Workspace {
+  recordId: string;
+  name: string;
+  slug: string;
+  ownerUserId: string;
+  plan: string;
+  colorAccent: string;
+  iconEmoji: string;
+  description: string;
+  isPersonal: boolean;
+  memberCount: number;
+  workflowCount: number;
+  createdAt: string;
+}
+
+interface WorkspaceFields {
+  "Workspace Name"?:  string;
+  "Workspace Slug"?:  string;
+  "Owner User ID"?:   string;
+  "Plan"?:            string;
+  "Color Accent"?:    string;
+  "Icon Emoji"?:      string;
+  "Description"?:     string;
+  "Is Personal"?:     boolean;
+  "Member Count"?:    number;
+  "Workflow Count"?:  number;
+  "Created At"?:      string;
+}
+
+/**
+ * Fetches workspace records. If ownerUserId is provided, filters to that owner.
+ */
+export async function fetchWorkspaces(ownerUserId?: string): Promise<Workspace[]> {
+  const params: FetchAllParams = {};
+  if (ownerUserId) {
+    params.filterByFormula = `{Owner User ID} = "${ownerUserId}"`;
+  }
+
+  const records = await fetchAll<WorkspaceFields>(TABLE_IDS.workspaces, params);
+
+  return records.map((r) => ({
+    recordId: r.id,
+    name: r.fields["Workspace Name"] ?? "Workspace",
+    slug: r.fields["Workspace Slug"] ?? r.id,
+    ownerUserId: r.fields["Owner User ID"] ?? "",
+    plan: r.fields["Plan"] ?? "free",
+    colorAccent: r.fields["Color Accent"] ?? "#0ea472",
+    iconEmoji: r.fields["Icon Emoji"] ?? "⬡",
+    description: r.fields["Description"] ?? "",
+    isPersonal: r.fields["Is Personal"] ?? false,
+    memberCount: r.fields["Member Count"] ?? 0,
+    workflowCount: r.fields["Workflow Count"] ?? 0,
+    createdAt: r.fields["Created At"] ?? "",
+  }));
+}
+
+// ─── Workflow Templates ───────────────────────────────────────────────────────
+
+export type TemplateDifficulty = "Beginner" | "Intermediate" | "Advanced";
+
+export interface WorkflowTemplate {
+  recordId: string;
+  name: string;
+  slug: string;
+  category: string;
+  description: string;
+  useCase: string;
+  compatibleRuntimes: string[];
+  gaiaPromptHint: string;
+  makeBlueprintUrl: string | null;
+  n8nImportUrl: string | null;
+  difficulty: TemplateDifficulty;
+  setupTimeMinutes: number;
+  isFeatured: boolean;
+  sortOrder: number;
+}
+
+interface WorkflowTemplateFields {
+  "Template Name"?:         string;
+  "Slug"?:                  string;
+  "Category"?:              string;
+  "Description"?:           string;
+  "Use Case"?:              string;
+  "Compatible Runtimes"?:   string;
+  "Gaia Prompt Hint"?:      string;
+  "Make Blueprint URL"?:    string;
+  "n8n Import URL"?:        string;
+  "Difficulty"?:            string;
+  "Setup Time Minutes"?:    number;
+  "Is Featured"?:           boolean;
+  "Sort Order"?:            number;
+}
+
+/**
+ * Fetches workflow templates, optionally filtered by featured flag.
+ */
+export async function fetchWorkflowTemplates(featuredOnly = false): Promise<WorkflowTemplate[]> {
+  const params: FetchAllParams = {
+    sort: [{ field: "Sort Order", direction: "asc" }],
+  };
+  if (featuredOnly) {
+    params.filterByFormula = "{Is Featured}";
+  }
+
+  const records = await fetchAll<WorkflowTemplateFields>(TABLE_IDS.workflowTemplates, params);
+
+  return records.map((r) => ({
+    recordId: r.id,
+    name: r.fields["Template Name"] ?? "Template",
+    slug: r.fields["Slug"] ?? r.id,
+    category: r.fields["Category"] ?? "General",
+    description: r.fields["Description"] ?? "",
+    useCase: r.fields["Use Case"] ?? "",
+    compatibleRuntimes: r.fields["Compatible Runtimes"]
+      ? r.fields["Compatible Runtimes"].split(",").map((s) => s.trim())
+      : [],
+    gaiaPromptHint: r.fields["Gaia Prompt Hint"] ?? "",
+    makeBlueprintUrl: r.fields["Make Blueprint URL"] ?? null,
+    n8nImportUrl: r.fields["n8n Import URL"] ?? null,
+    difficulty: (r.fields["Difficulty"] ?? "Beginner") as TemplateDifficulty,
+    setupTimeMinutes: r.fields["Setup Time Minutes"] ?? 15,
+    isFeatured: r.fields["Is Featured"] ?? false,
+    sortOrder: r.fields["Sort Order"] ?? 0,
+  }));
+}
+
+// ─── Demo Bookings (write-only from browser) ──────────────────────────────────
+
+export interface DemoBookingInput {
+  fullName:    string;
+  workEmail:   string;
+  company:     string;
+  jobTitle:    string;
+  teamSize:    string;
+  primaryUseCase: string;
+  currentTools: string;
+  preferredDate: string;
+  message:     string;
+  source?:     string;
+}
+
+/**
+ * Creates a new Demo Booking record in Airtable.
+ * Uses the Airtable REST API directly (token must have write access).
+ */
+export async function createDemoBooking(input: DemoBookingInput): Promise<string> {
+  if (!TOKEN) throw new Error("VITE_AIRTABLE_TOKEN is not set — cannot write demo booking.");
+
+  const res = await fetch(`${BASE_URL}/${TABLE_IDS.demoBookings}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fields: {
+        "Full Name":        input.fullName,
+        "Work Email":       input.workEmail,
+        "Company":          input.company,
+        "Job Title":        input.jobTitle,
+        "Team Size":        input.teamSize,
+        "Primary Use Case": input.primaryUseCase,
+        "Current Tools":    input.currentTools,
+        "Preferred Date":   input.preferredDate,
+        "Message":          input.message,
+        "Status":           "New",
+        "Source":           input.source ?? "website",
+        "Submitted At":     new Date().toISOString(),
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`[Airtable] Demo booking failed: ${res.status} ${text}`);
+  }
+
+  const data: { id: string } = await res.json();
+  return data.id;
 }

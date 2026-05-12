@@ -1,13 +1,16 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { t as translate, type TranslationKey } from "@/i18n/translations";
 export type { TranslationKey };
 
+/** All 7 supported languages — codes match Airtable Translations table */
 export const LANGUAGES = [
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "sw", label: "Swahili", flag: "🇰🇪" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "pt", label: "Português", flag: "🇧🇷" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "en", label: "English",    flag: "🇬🇧", dir: "ltr" as const },
+  { code: "fr", label: "Français",   flag: "🇫🇷", dir: "ltr" as const },
+  { code: "es", label: "Español",    flag: "🇪🇸", dir: "ltr" as const },
+  { code: "de", label: "Deutsch",    flag: "🇩🇪", dir: "ltr" as const },
+  { code: "pt", label: "Português",  flag: "🇧🇷", dir: "ltr" as const },
+  { code: "sw", label: "Kiswahili",  flag: "🇰🇪", dir: "ltr" as const },
+  { code: "ar", label: "العربية",   flag: "🇸🇦", dir: "rtl" as const },
 ] as const;
 
 export const REGIONS = [
@@ -34,6 +37,7 @@ export type RegionCode = (typeof REGIONS)[number]["code"];
 interface LocaleContextType {
   language: LanguageCode;
   region: RegionCode;
+  isRTL: boolean;
   setLanguage: (lang: LanguageCode) => void;
   setRegion: (region: RegionCode) => void;
 }
@@ -56,6 +60,15 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     readStored("nexusops-region", "KE", REGIONS)
   );
 
+  const currentLangMeta = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
+  const isRTL = currentLangMeta.dir === "rtl";
+
+  // Apply RTL direction and lang attribute to <html>
+  useEffect(() => {
+    document.documentElement.setAttribute("lang", language);
+    document.documentElement.setAttribute("dir", isRTL ? "rtl" : "ltr");
+  }, [language, isRTL]);
+
   function setLanguage(lang: LanguageCode) {
     setLangState(lang);
     try { localStorage.setItem("nexusops-lang", lang); } catch {}
@@ -67,7 +80,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <LocaleContext.Provider value={{ language, region, setLanguage, setRegion }}>
+    <LocaleContext.Provider value={{ language, region, isRTL, setLanguage, setRegion }}>
       {children}
     </LocaleContext.Provider>
   );
@@ -79,7 +92,7 @@ export function useLocale() {
   return ctx;
 }
 
-/** Translation helper bound to the current language */
+/** Translation helper bound to the current language (static strings) */
 export function useT() {
   const { language } = useLocale();
   return (key: TranslationKey) => translate(language, key);
