@@ -142,6 +142,34 @@ create policy "platform_config_public_read" on public.platform_config
   for select using (true);
 
 -- =============================================================
+-- DATA API GRANTS (required from Supabase 2026-05-30)
+-- Without these, supabase-js / PostgREST returns 42501.
+-- =============================================================
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles          TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles          TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workflows         TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workflows         TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.execution_logs    TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.execution_logs    TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_interaction_logs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ai_interaction_logs TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.performance_data  TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.performance_data  TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.final_reports     TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.final_reports     TO service_role;
+
+-- platform_config: anon can read (landing page pricing/config)
+GRANT SELECT                          ON public.platform_config  TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_config   TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_config   TO service_role;
+
+-- =============================================================
 -- TRIGGERS
 -- =============================================================
 

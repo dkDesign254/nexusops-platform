@@ -89,6 +89,8 @@ CREATE TABLE IF NOT EXISTS public.agent_configs (
 );
 
 ALTER TABLE public.agent_configs ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.agent_configs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.agent_configs TO service_role;
 
 DO $$ BEGIN
   IF NOT EXISTS (
@@ -111,6 +113,8 @@ CREATE TABLE IF NOT EXISTS public.gaia_sessions (
 );
 
 ALTER TABLE public.gaia_sessions ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gaia_sessions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gaia_sessions TO service_role;
 
 DO $$ BEGIN
   IF NOT EXISTS (
@@ -131,6 +135,8 @@ CREATE TABLE IF NOT EXISTS public.gaia_messages (
 );
 
 ALTER TABLE public.gaia_messages ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gaia_messages TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gaia_messages TO service_role;
 
 DO $$ BEGIN
   IF NOT EXISTS (
@@ -158,6 +164,8 @@ CREATE TABLE IF NOT EXISTS public.audit_events (
 ALTER TABLE public.audit_events ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS audit_events_timestamp_idx ON public.audit_events(timestamp DESC);
+GRANT SELECT ON public.audit_events TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.audit_events TO service_role;
 
 DO $$ BEGIN
   IF NOT EXISTS (
@@ -183,6 +191,8 @@ CREATE TABLE IF NOT EXISTS public.alerts (
 );
 
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.alerts TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.alerts TO service_role;
 
 DO $$ BEGIN
   IF NOT EXISTS (

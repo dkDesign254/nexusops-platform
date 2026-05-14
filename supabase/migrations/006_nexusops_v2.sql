@@ -101,6 +101,21 @@ DO $$ BEGIN
   CREATE POLICY "api_keys_own" ON public.api_keys FOR ALL USING (auth.uid() = user_id);
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
+-- ── Explicit Data API grants (required from Supabase 2026-05-30) ─────────────
+-- Without these, supabase-js / PostgREST returns 42501 on new projects.
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles         TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles         TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_integrations  TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_integrations  TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workspace_members  TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.workspace_members  TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.api_keys           TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.api_keys           TO service_role;
+
 -- ── Auto-create profile on signup ──────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
